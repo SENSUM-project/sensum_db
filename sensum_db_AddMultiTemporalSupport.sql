@@ -1,54 +1,16 @@
 ﻿----------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-temporal database support
--- Version: 0.8
--- Date: 20.09.13
+-- Version: 0.9
+-- Date: 19.06.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-temporal support to the basic SENSUM data model.
---		Trigger function to log transactions is based on http://wiki.postgresql.org/wiki/Audit_trigger_91plus
+--		1. Adds trigger functions to log database transactions for selected tables and optionally columns
+--		   (reference: http://wiki.postgresql.org/wiki/Audit_trigger_91plus)
+--		2. Adds temporal query functions for transaction time and valid time
 ----------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------
-
-/*-- Create hstore extension
-CREATE EXTENSION IF NOT EXISTS hstore;
-
--- Create history schema
-CREATE SCHEMA history;
-REVOKE ALL ON SCHEMA history FROM public;
-
--- Create table to hold database transactions
-CREATE TABLE history.logged_actions (
-    gid bigserial PRIMARY KEY,
-    schema_name text NOT NULL,
-    table_name text NOT NULL,
-    table_id oid NOT NULL,
-    transaction_id bigint,
-    transaction_user text,
-    transaction_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    transaction_query text,
-    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('I','D','U', 'T')),
-    old_record hstore,
-    new_record hstore,
-    changed_fields hstore
-);
-REVOKE ALL ON history.logged_actions FROM public;
-COMMENT ON TABLE history.logged_actions IS 'History of transactions on activated tables, from history.if_modified_func().';
-COMMENT ON COLUMN history.logged_actions.gid IS '';
-COMMENT ON COLUMN history.logged_actions.schema_name IS 'Database schema where changed table is in.';
-COMMENT ON COLUMN history.logged_actions.table_name IS 'Name of changed table.';
-COMMENT ON COLUMN history.logged_actions.table_id IS 'Table OID.';
-COMMENT ON COLUMN history.logged_actions.transaction_id IS 'ID of transaction.';
-COMMENT ON COLUMN history.logged_actions.transaction_user IS 'Session user name who caused the transaction.';
-COMMENT ON COLUMN history.logged_actions.transaction_time IS 'Start timestamp when transaction happened.';
-COMMENT ON COLUMN history.logged_actions.transaction_query IS 'Transaction query.';
-COMMENT ON COLUMN history.logged_actions.transaction_type IS 'Transaction type; I = insert, D = delete, U = update, T = truncate';
-COMMENT ON COLUMN history.logged_actions.old_record IS 'For DELETE and UPDATE it is the old record. For INSERT this is the new record.';
-COMMENT ON COLUMN history.logged_actions.new_record IS 'New record changed by UPDATE.';
-COMMENT ON COLUMN history.logged_actions.changed_fields IS 'Changed fields.';
-CREATE INDEX logged_changes_table_id_idx ON history.logged_actions(table_id);
-CREATE INDEX logged_changes_action_idx ON history.logged_actions(transaction_type);
-*/
 
 -- Create trigger function to log transactions
 CREATE OR REPLACE FUNCTION history.if_modified_func() 
@@ -203,7 +165,8 @@ COMMENT ON FUNCTION history.history_table(regclass) IS $body$
 ADD auditing support TO the given TABLE. Row-level changes will be logged WITH FULL query text. No cols are ignored.
 $body$;
 
-
+/*
+--TODO: ADJUST THE FOLLOWING TEMPORAL QUERIES TO NEW TABLE STRUCTURES AND MAKE THEM EASIER AND APPLICABLE TO ANY TABLE STRUCTURES!!!!
 --------------------------------------------------
 -- Add transaction time query function (Inside) --
 --------------------------------------------------
@@ -774,3 +737,4 @@ Arguments:
    vtime_from:	valid time from yyy-mm-dd hh:mm:ss
    vtime_to:	valid time to yyy-mm-dd hh:mm:ss
 $body$;
+*/

@@ -1,15 +1,19 @@
 ﻿-----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution, multi-temporal database model 
--- Version: 0.8
--- Date: 20.09.13
+-- Version: 0.9
+-- Date: 15.04.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
--- Description: Adds the basic data model to a PostGIS 2.0 supported database.  
---		To activate multi-resolution support run sensum_db_v08_AddMultiResolutionSupport.sql. 
---		To activate multi-temporal support run sensum_db_v08_AddMultiTemporalSupport.sql.
+-- Description: Adds the basic data model with hstore and postgis support.  
+--		To activate multi-resolution support run sensum_db_v09_AddMultiResolutionSupport.sql. 
+--		To activate multi-temporal support run sensum_db_v09_AddMultiTemporalSupport.sql.
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
+
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
 CREATE EXTENSION IF NOT EXISTS hstore;
 
@@ -19,23 +23,23 @@ CREATE SCHEMA object;
 
 CREATE SCHEMA history;
 
-CREATE SEQUENCE taxonomy.dic_attribute_type_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.dic_attribute_type_gid_seq START WITH 1;
 
-CREATE SEQUENCE taxonomy.dic_attribute_value_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.dic_attribute_value_gid_seq START WITH 1;
 
-CREATE SEQUENCE taxonomy.dic_qualifier_type_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.dic_qualifier_type_gid_seq START WITH 1;
 
-CREATE SEQUENCE taxonomy.dic_qualifier_value_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.dic_qualifier_value_gid_seq START WITH 1;
 
-CREATE SEQUENCE taxonomy.dic_taxonomy_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.dic_taxonomy_gid_seq START WITH 1;
 
-CREATE SEQUENCE taxonomy.hazard_gid_seq5 START WITH 1;
+CREATE SEQUENCE taxonomy.hazard_gid_seq START WITH 1;
 
-CREATE SEQUENCE object.main_detail_gid_seq5 START WITH 1;
+CREATE SEQUENCE object.main_detail_gid_seq START WITH 1;
 
-CREATE SEQUENCE object.main_gid_seq6 START WITH 1;
+CREATE SEQUENCE object.main_gid_seq START WITH 1;
 
-CREATE SEQUENCE object.main_detail_qualifier_gid_seq6 START WITH 1;
+CREATE SEQUENCE object.main_detail_qualifier_gid_seq START WITH 1;
 
 CREATE SEQUENCE history.logged_actions_gid_seq START WITH 1;
 
@@ -187,6 +191,9 @@ CREATE TABLE object.main (
 	description          varchar( 254 ),
 	source               text,
 	resolution           integer,
+	resolution2_id       integer,
+	resolution3_id       integer,
+	the_geom             geometry,
 	CONSTRAINT pk_main_0 PRIMARY KEY ( gid )
  );
 
@@ -202,17 +209,20 @@ COMMENT ON COLUMN object.main.source IS 'Source of the object content (e.g. remo
 
 COMMENT ON COLUMN object.main.resolution IS 'Identifier for the spatial resolution (e.g. 1 = local, 2 = regional, 3 = national)';
 
+COMMENT ON COLUMN object.main.resolution2_id IS 'gid of the object detail at resolution level 2 (e.g. regional scale)';
+
+COMMENT ON COLUMN object.main.resolution3_id IS 'gid of the object detail at resolution level 3 (e.g. national scale)';
+
+COMMENT ON COLUMN object.main.the_geom IS 'Spatial reference and geometry information';
+
 CREATE TABLE object.main_detail ( 
 	gid                  serial NOT NULL,
 	object_id            integer,
-	resolution2_id       integer,
-	resolution3_id       integer,
 	attribute_type_code  varchar( 254 ),
 	attribute_value      varchar( 254 ),
 	attribute_numeric_1  numeric,
 	attribute_numeric_2  numeric,
 	attribute_text_1     varchar( 254 ),
-	the_geom             geometry,
 	CONSTRAINT pk_object PRIMARY KEY ( gid )
  );
 
@@ -228,10 +238,6 @@ COMMENT ON COLUMN object.main_detail.gid IS 'Unique object detail identifier';
 
 COMMENT ON COLUMN object.main_detail.object_id IS 'Object identifier';
 
-COMMENT ON COLUMN object.main_detail.resolution2_id IS 'gid of the object detail at resolution level 2 (e.g. regional scale)';
-
-COMMENT ON COLUMN object.main_detail.resolution3_id IS 'gid of the object detail at resolution level 3 (e.g. national scale)';
-
 COMMENT ON COLUMN object.main_detail.attribute_type_code IS 'Code of the taxonomy attribute type';
 
 COMMENT ON COLUMN object.main_detail.attribute_value IS 'Value of the taxonomy attribute type (from look up table in taxonomy scheme)';
@@ -241,8 +247,6 @@ COMMENT ON COLUMN object.main_detail.attribute_numeric_1 IS 'Value of the taxono
 COMMENT ON COLUMN object.main_detail.attribute_numeric_2 IS 'Value of the taxonomy attribute type (numeric)';
 
 COMMENT ON COLUMN object.main_detail.attribute_text_1 IS 'Value of the taxonomy attribute type (textual)';
-
-COMMENT ON COLUMN object.main_detail.the_geom IS 'Spatial reference and geometry information';
 
 CREATE TABLE object.main_detail_qualifier ( 
 	gid                  serial NOT NULL,
