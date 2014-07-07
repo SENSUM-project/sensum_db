@@ -6,8 +6,8 @@
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the basic data model with hstore and postgis support.  
---		To activate multi-resolution support run sensum_db_AddMultiResolutionSupport.sql. 
---		To activate multi-temporal support run sensum_db_AddMultiTemporalSupport.sql.
+--		To activate multi-resolution support run sensum_db_v09_AddMultiResolutionSupport.sql. 
+--		To activate multi-temporal support run sensum_db_v09_AddMultiTemporalSupport.sql.
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 
