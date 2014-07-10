@@ -4,7 +4,7 @@
 -- selective transaction logs: history.history_table(target_table regclass, audit_rows boolean, audit_query_text boolean, excluded_cols text[]) 
 SELECT history.history_table('object.main');
 SELECT history.history_table('object.main_detail_qualifier', 'true', 'false');
-SELECT history.history_table('object.main_detail', 'true', 'false', '{resolution2_id, resolution3_id}'::text[]);
+SELECT history.history_table('object.main', 'true', 'false', '{res2_id, res3_id}'::text[]);
 
 DROP TRIGGER history_trigger_row ON object.main_detail;
 DROP TRIGGER history_trigger_stm ON object.main_detail;
