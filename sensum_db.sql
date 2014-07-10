@@ -1,8 +1,8 @@
 ﻿-----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution, multi-temporal database model 
--- Version: 0.9
--- Date: 15.04.14
+-- Version: 0.9.1
+-- Date: 10.07.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the basic data model with hstore and postgis support.  
