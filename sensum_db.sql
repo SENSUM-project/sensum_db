@@ -486,13 +486,14 @@ CREATE TABLE history.logged_actions (
 	table_name           text NOT NULL,
 	table_id             oid NOT NULL,
 	transaction_id       bigint,
-	transaction_time     timestamptz NOT NULL,
 	transaction_user     text,
+	transaction_time     timestamptz NOT NULL,
 	transaction_query    text,
 	transaction_type     text NOT NULL,
 	old_record           hstore,
 	new_record           hstore,
 	changed_fields       hstore,
+	statement_only 	     BOOLEAN NOT NULL,
 	CONSTRAINT logged_actions_pkey PRIMARY KEY ( gid )
  );
 

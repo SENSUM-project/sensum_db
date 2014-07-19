@@ -2,33 +2,79 @@
 -- Example for activation/deactivation of logging transactions on a table --
 ----------------------------------------------------------------------------
 -- selective transaction logs: history.history_table(target_table regclass, audit_rows boolean, audit_query_text boolean, excluded_cols text[]) 
-SELECT history.history_table('object.main');
-SELECT history.history_table('object.main_detail_qualifier', 'true', 'false');
-SELECT history.history_table('object.main', 'true', 'false', '{res2_id, res3_id}'::text[]);
+SELECT history.history_table('object_res1.main_detail');
+SELECT history.history_table('object_res1.main_detail_qualifier', 'true', 'false');
+SELECT history.history_table('object_res1.main', 'false', 'false', '{res2_id, res3_id}'::text[]);
 
-DROP TRIGGER history_trigger_row ON object.main_detail;
-DROP TRIGGER history_trigger_stm ON object.main_detail;
+--deactivate logging for row trigger
+DROP TRIGGER history_trigger_row ON object_res1.main;
+--deactivate logging for statement trigger
+DROP TRIGGER history_trigger_stm ON object_res1.main;
+
+--TODO: check statement trigger - still error when trying to run (could be better sort of trigger for dataentry form -> only one logged action per object table instead of 60 for each attribute?!)
 
 ------------------------------------------------------------------------
--- Example for "get history transaction time query" ttime_gethistory()--
+-- Example for "get history transaction time query" ttime_gethistory(tbl)--
 ------------------------------------------------------------------------
 -- This gives the full transaction time history (all the logged changes) of a specified object primitive
-CREATE OR REPLACE VIEW object.ttime_gethistory AS
-SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid,* FROM history.ttime_gethistory() WHERE gid=278;
+--example query (note: structure of results table has to be defined in query)
+SELECT * FROM history.ttime_gethistory('object_res1.main') 
+	main (gid integer, 
+	      survey_gid integer, 
+	      description character varying, 
+	      source text, 
+	      res2_id integer, 
+	      res3_id integer, 
+	      the_geom geometry, 
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) where gid=2;
+--example view
+CREATE OR REPLACE VIEW object_res1.ttime_gethistory AS
+SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * FROM history.ttime_gethistory('object_res1.main') 
+	main (gid integer, 
+	      survey_gid integer, 
+	      description character varying, 
+	      source text, 
+	      res2_id integer, 
+	      res3_id integer, 
+	      the_geom geometry, 
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) where gid=2;
 
 -------------------------------------------------------------------
 -- Example for "equals transaction time query" ttime_equal(ttime)--
 -------------------------------------------------------------------
 -- This gives all the object primitives that were modified at the queried transaction time ("AT t")
-CREATE OR REPLACE VIEW object.ttime_equal AS
-SELECT * FROM history.ttime_equal('2013-07-20 19:03:00.744+02');
+CREATE OR REPLACE VIEW object_res1.ttime_equal AS
+SELECT * FROM history.ttime_equal('object_res1.main', '2014-07-19 13:56:18.714175+02')
+	main (gid integer, 
+	      survey_gid integer, 
+	      description character varying, 
+	      source text, 
+	      res2_id integer, 
+	      res3_id integer, 
+	      the_geom geometry, 
+	      transaction_timestamp timestamptz, 
+	      transaction_type text);
 
 -----------------------------------------------------------------------------------
 -- Example for "inside transaction time query" ttime_inside(ttime_from, ttime_to)--
 -----------------------------------------------------------------------------------
 -- This gives all the object primitives that were modified within the queried transaction time range
-SELECT * FROM history.ttime_inside('2013-07-20 19:18:00','2013-07-30 23:54:00');
+CREATE OR REPLACE VIEW object_res1.ttime_inside AS
+SELECT * FROM history.ttime_inside('object_res1.main', '2014-07-19 16:00:00', '2014-07-19 16:40:00')
+	main (gid integer, 
+	      survey_gid integer, 
+	      description character varying, 
+	      source text, 
+	      res2_id integer, 
+	      res3_id integer, 
+	      the_geom geometry, 
+	      transaction_timestamp timestamptz, 
+	      transaction_type text);
 
+
+--TODO: adjust following queries
 ------------------------------------------------------------------
 -- Example for "get history valid time query" vtime_gethistory()--
 ------------------------------------------------------------------

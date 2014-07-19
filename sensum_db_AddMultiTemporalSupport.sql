@@ -12,7 +12,9 @@
 ----------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------
 
--- Create trigger function to log transactions
+------------------------------------------------
+-- Create trigger function to log transactions--
+------------------------------------------------
 CREATE OR REPLACE FUNCTION history.if_modified_func() 
 RETURNS TRIGGER AS 
 $body$
@@ -38,7 +40,8 @@ BEGIN
         current_timestamp,                            -- transaction_time
         current_query(),                              -- top-level query or queries (if multistatement) from client
         substring(TG_OP,1,1),                         -- transaction_type
-        NULL, NULL, NULL                              -- old_record, new_record, changed_fields
+        NULL, NULL, NULL,                             -- old_record, new_record, changed_fields
+        'f'                                           -- statement_only
         );
  
     IF NOT TG_ARGV[0]::BOOLEAN IS DISTINCT FROM 'f'::BOOLEAN THEN
@@ -61,6 +64,8 @@ BEGIN
 	history_row.old_record = hstore(OLD.*);
     ELSIF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
 	history_row.new_record = hstore(NEW.*);
+    ELSIF (TG_LEVEL = 'STATEMENT' AND TG_OP IN ('INSERT','UPDATE','DELETE','TRUNCATE')) THEN
+        history_row.statement_only = 't';
     ELSE
         RAISE EXCEPTION '[history.if_modified_func] - Trigger func added as trigger for unhandled case: %, %',TG_OP, TG_LEVEL;
         RETURN NULL;
@@ -98,7 +103,9 @@ cannot obtain the active role because it IS reset BY the SECURITY DEFINER invoca
 of the history TRIGGER its self.
 $body$;
 
--- Create function to activate transaction logging for a specific table
+-------------------------------------------------------------------------
+-- Create function to activate transaction logging for a specific table--
+-------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_rows BOOLEAN, history_query_text BOOLEAN, ignored_cols text[]) 
 RETURNS void AS 
 $body$
@@ -144,16 +151,20 @@ Arguments:
    history_query_text: Record the text of the client query that triggered the history event?
    ignored_cols:     COLUMNS TO exclude FROM UPDATE diffs, IGNORE updates that CHANGE only ignored cols.
 $body$;
- 
--- Provide a wrapper because Pg does not allow variadic calls with 0 parameters
+
+---------------------------------------------------------------------------------
+-- Provide a wrapper because Pg does not allow variadic calls with 0 parameters--
+---------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_rows BOOLEAN, history_query_text BOOLEAN) 
 RETURNS void AS 
 $body$
 SELECT history.history_table($1, $2, $3, ARRAY[]::text[]);
 $body$ 
 LANGUAGE SQL;
- 
--- Provide a convenience call wrapper for the simplest case (row-level logging with no excluded cols and query logging enabled)
+
+---------------------------------------------------------------------------------------------------------------------------------
+-- Provide a convenience call wrapper for the simplest case (row-level logging with no excluded cols and query logging enabled)--
+---------------------------------------------------------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION history.history_table(target_table regclass) 
 RETURNS void AS 
 $$
@@ -165,145 +176,106 @@ COMMENT ON FUNCTION history.history_table(regclass) IS $body$
 ADD auditing support TO the given TABLE. Row-level changes will be logged WITH FULL query text. No cols are ignored.
 $body$;
 
-/*
---TODO: ADJUST THE FOLLOWING TEMPORAL QUERIES TO NEW TABLE STRUCTURES AND MAKE THEM EASIER AND APPLICABLE TO ANY TABLE STRUCTURES!!!!
---------------------------------------------------
--- Add transaction time query function (Inside) --
---------------------------------------------------
-CREATE OR REPLACE FUNCTION history.ttime_inside(ttime_from timestamp DEFAULT '0001-01-01 00:00:00', ttime_to timestamp DEFAULT now()) 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-transaction_timestamp timestamptz,
-transaction_type text
-) AS
-$BODY$
-BEGIN
-	RETURN QUERY
-
-	--query1: query new_record column to get the UPDATE and INSERT objects
-	(SELECT (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_time >= ttime_from AND b.transaction_time <= ttime_to AND b.transaction_type = 'U'
-	OR b.table_name = 'main_detail' AND b.transaction_time >= ttime_from AND b.transaction_time <= ttime_to AND b.transaction_type = 'I'
-	ORDER BY b.new_record->'gid', b.transaction_time DESC)
-	
-	UNION ALL
-
-	--query2: query old_record column to get the DELETE objects
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_time >= ttime_from AND b.transaction_time <= ttime_to AND b.transaction_type = 'D'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC);
-END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.ttime_inside(ttime_from timestamp, ttime_to timestamp) IS $body$
-This function searches history.logged_actions to get the latest version of each object primitive that has been modified only within the queried transaction time.
-
-Arguments:
-   ttime_from:	transaction time from yyy-mm-dd hh:mm:ss
-   ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
-$body$;
-
-
--------------------------------------------------------
--- Add transaction time query function (Equal) --
--------------------------------------------------------
-CREATE OR REPLACE FUNCTION history.ttime_equal(ttime timestamp) 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-transaction_timestamp timestamptz,
-transaction_type text
-) AS
-$BODY$
-BEGIN
-	RETURN QUERY
-
-	--query1: query new_record column to get the UPDATE and INSERT records
-	(SELECT (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_time = ttime AND b.transaction_type = 'U'
-	OR b.table_name = 'main_detail' AND b.transaction_time = ttime AND b.transaction_type = 'I'
-	ORDER BY b.new_record->'gid', b.transaction_time DESC)
-	
-	UNION ALL
-
-	--query2: query old_record column to get the DELETE records
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_time = ttime AND b.transaction_type = 'D'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC);
-END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.ttime_equal(ttime timestamp) IS $body$
-This function searches history.logged_actions to get the latest version of each object primitive whose transaction time equals the queried timerange.
-
-Arguments:
-   ttime_from:	transaction time from yyy-mm-dd hh:mm:ss
-   ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
-$body$;
-
 
 ------------------------------------------------------
 -- Add transaction time query function (getHistory) --
 ------------------------------------------------------
-CREATE OR REPLACE FUNCTION history.ttime_gethistory() 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-transaction_timestamp timestamptz,
-transaction_type text
-) AS
+CREATE OR REPLACE FUNCTION history.ttime_gethistory(tbl character varying)
+RETURNS SETOF RECORD AS
 $BODY$
 BEGIN
-	RETURN QUERY
-		
+    RETURN QUERY EXECUTE '
 	--query1: query new_record column to get the UPDATE and INSERT records
-	(SELECT (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_type='U'
-	OR b.table_name = 'main_detail' AND b.transaction_type='I'
+	(SELECT (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''U''
+	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''I''
 	ORDER BY b.transaction_time DESC)	
 
 	UNION ALL
 
 	--query2: query old_record column to get the DELETE records
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail' AND b.transaction_type='D'
+	(SELECT (populate_record(null::' ||tbl|| ', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''D''
 	ORDER BY b.transaction_time DESC);
+	';
 END;
-$BODY$ 
-LANGUAGE 'plpgsql';
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_gethistory(tbl character varying) IS $body$
+This function searches history.logged_actions to get all transactions of object primitives.
+Arguments:
+   tbl:		schema.table character varying
+$body$;
 
-COMMENT ON FUNCTION history.ttime_gethistory() IS $body$
-This function searches history.logged_actions to get all versions of each object primitive that has been modified.
+-------------------------------------------------
+-- Add transaction time query function (Equal) --
+-------------------------------------------------
+CREATE OR REPLACE FUNCTION history.ttime_equal(tbl character varying, ttime timestamp)
+RETURNS SETOF RECORD AS
+$BODY$
+BEGIN
+    RETURN QUERY EXECUTE '
+	--query1: query new_record column to get the UPDATE and INSERT records
+	(SELECT (populate_record(null::'||tbl||', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''U''
+	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''I''
+	ORDER BY b.new_record->''gid'', b.transaction_time DESC)
+	
+	UNION ALL
+
+	--query2: query old_record column to get the DELETE records
+	(SELECT (populate_record(null::'||tbl||', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''D''
+	ORDER BY b.old_record->''gid'', b.transaction_time DESC);
+	';
+END;
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_equal(tbl character varying, ttime timestamp) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive whose transaction time equals the queried timestamp.
+
+Arguments:
+   tbl:		schema.table character varying
+   ttime:	transaction time yyy-mm-dd hh:mm:ss
+$body$;
+
+--------------------------------------------------
+-- Add transaction time query function (Inside) --
+--------------------------------------------------
+CREATE OR REPLACE FUNCTION history.ttime_inside(tbl character varying, ttime_from timestamp DEFAULT '0001-01-01 00:00:00', ttime_to timestamp DEFAULT now()) 
+RETURNS SETOF RECORD AS
+$BODY$
+BEGIN
+    RETURN QUERY EXECUTE '
+	--query1: query new_record column to get the UPDATE and INSERT objects
+	(SELECT (populate_record(null::'||tbl||', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''U''
+	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''I''
+	ORDER BY b.new_record->''gid'', b.transaction_time DESC)
+	
+	UNION ALL
+
+	--query2: query old_record column to get the DELETE objects
+	(SELECT (populate_record(null::'||tbl||', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''D''
+	ORDER BY b.old_record->''gid'', b.transaction_time DESC);
+	';
+END;
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_inside(tbl character varying, ttime_from timestamp, ttime_to timestamp) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive that has been modified only within the queried transaction time.
+
+Arguments:
+   tbl:		schema.table character varying
+   ttime_from:	transaction time from yyy-mm-dd hh:mm:ss
+   ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
 $body$;
 
 
+
+/*
+--TODO: ADJUST THE FOLLOWING TEMPORAL QUERIES TO NEW TABLE STRUCTURES AND MAKE THEM EASIER AND APPLICABLE TO ANY TABLE STRUCTURES!!!!
 ------------------------------------------------
 -- Add valid time query function (getHistory) --
 ------------------------------------------------
