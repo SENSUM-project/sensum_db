@@ -272,6 +272,179 @@ Arguments:
    ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
 $body$;
 
+------------------------------------------------
+-- Add valid time query function (getHistory) --
+------------------------------------------------
+CREATE OR REPLACE FUNCTION history.vtime_gethistory(tbl character varying, vtime_col character varying)
+RETURNS SETOF RECORD AS
+$BODY$
+BEGIN
+    RETURN QUERY EXECUTE '
+
+
+	';
+END;
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_gethistory(tbl character varying, vtime_col character varying) IS $body$
+This function searches history.logged_actions to get all real world changes with the corresponding latest version for each object primitive at each valid time.
+
+Arguments:
+   tbl:		schema.table character varying
+   vtime_col:	valid time column
+$body$;
+
+
+
+
+
+CREATE OR REPLACE FUNCTION history.vtime_gethistory() 
+RETURNS TABLE (
+gid int,
+object_id int,
+resolution int,
+resolution2_id int,
+resolution3_id int,
+attribute_type_code varchar,
+attribute_value varchar,
+attribute_numeric_1 numeric,
+attribute_numeric_2 numeric,
+attribute_text_1 varchar,
+the_geom geometry,
+valid_timestamp_1 timestamptz,
+valid_timestamp_2 timestamptz,
+transaction_timestamp timestamptz,
+transaction_type text
+) AS
+$BODY$
+BEGIN
+	RETURN QUERY SELECT * FROM (
+
+	--query1: query new_record column to get the latest UPDATE records
+	SELECT  
+	n2.gid,
+	n2.object_id,
+	n3.resolution,
+	n2.resolution2_id,
+	n2.resolution3_id,
+	n2.attribute_type_code,
+	n2.attribute_value,
+	n2.attribute_numeric_1,
+	n2.attribute_numeric_2,
+	n2.attribute_text_1,
+	n2.the_geom,
+	n1.qualifier_timestamp_1,
+	n1.qualifier_timestamp_2,
+	n1.transaction_time,
+	n1.transaction_type
+	FROM
+	
+	(SELECT DISTINCT ON (a.new_record->'gid') (populate_record(null::object.main_detail_qualifier, a.new_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
+	WHERE a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_1')
+	OR a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_2')	
+	ORDER BY a.new_record->'gid', a.transaction_time DESC) n1
+
+	LEFT JOIN 
+
+	(SELECT DISTINCT ON (b.new_record->'gid') (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
+	WHERE b.table_name = 'main_detail'
+	ORDER BY b.new_record->'gid', b.transaction_time DESC) n2
+	
+	ON (n2.gid = n1.detail_id)
+	
+	JOIN 
+	object.main AS n3 
+	ON (n3.gid = n2.object_id)
+
+	UNION ALL
+
+	--query2: query new_record column to get the UPDATE and INSERT records
+	SELECT  
+	n2.gid,
+	n2.object_id,
+	n3.resolution,
+	n2.resolution2_id,
+	n2.resolution3_id,
+	n2.attribute_type_code,
+	n2.attribute_value,
+	n2.attribute_numeric_1,
+	n2.attribute_numeric_2,
+	n2.attribute_text_1,
+	n2.the_geom,
+	n1.qualifier_timestamp_1,
+	n1.qualifier_timestamp_2,
+	n1.transaction_time,
+	n1.transaction_type
+	FROM
+
+	(SELECT (populate_record(null::object.main_detail_qualifier, a.new_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
+	WHERE a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_1')
+	OR a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_2')	--select records that were UPDATE and that caused a change to the transaction_time (=real world change)
+	OR a.table_name = 'main_detail_qualifier' AND a.transaction_type = 'I'	--select records that were INSERTED
+	ORDER BY a.transaction_time DESC OFFSET 1) n1	--OFFSET 1 to remove the latest UPDATE record (will be substituted by query1 result which gives the latest version in the database and not the latest version before or at n1.transaction_time)
+
+	LEFT JOIN 
+
+	(SELECT (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
+	WHERE b.table_name = 'main_detail'
+	ORDER BY b.transaction_time) n2
+	
+	ON (n2.gid = n1.detail_id 
+	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
+
+	JOIN 
+	object.main AS n3 
+	ON (n3.gid = n2.object_id)
+	
+	UNION ALL
+
+	--query3: query old_record column to get the DELETE records
+	SELECT  
+	n2.gid,
+	n2.object_id,
+	n3.resolution,
+	n2.resolution2_id,
+	n2.resolution3_id,
+	n2.attribute_type_code,
+	n2.attribute_value,
+	n2.attribute_numeric_1,
+	n2.attribute_numeric_2,
+	n2.attribute_text_1,
+	n2.the_geom,
+	n1.qualifier_timestamp_1,
+	n1.qualifier_timestamp_2,
+	n1.transaction_time,
+	n1.transaction_type
+	FROM
+
+	(SELECT (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
+	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_1'!='' AND a.transaction_type = 'D'
+	OR a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_2'!='' AND a.transaction_type = 'D'
+	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1
+	
+	LEFT JOIN 
+
+	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
+	WHERE b.table_name = 'main_detail'
+	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2
+
+	ON (n2.gid = n1.detail_id 
+	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
+
+	JOIN 
+	object.main AS n3 
+	ON (n3.gid = n2.object_id)
+
+	) n0 ORDER BY n0.gid, n0.transaction_time DESC;
+END;
+$BODY$ 
+LANGUAGE 'plpgsql';
+
+COMMENT ON FUNCTION history.vtime_gethistory() IS $body$
+This function searches history.logged_actions to get all real world changes with the corresponding latest version for each object primitive at each valid time.
+$body$;
+
+
 
 
 /*

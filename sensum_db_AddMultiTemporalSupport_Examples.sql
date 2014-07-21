@@ -4,14 +4,12 @@
 -- selective transaction logs: history.history_table(target_table regclass, audit_rows boolean, audit_query_text boolean, excluded_cols text[]) 
 SELECT history.history_table('object_res1.main_detail');
 SELECT history.history_table('object_res1.main_detail_qualifier', 'true', 'false');
-SELECT history.history_table('object_res1.main', 'false', 'false', '{res2_id, res3_id}'::text[]);
+SELECT history.history_table('object_res1.main', 'true', 'false', '{res2_id, res3_id}'::text[]);
 
 --deactivate logging for row trigger
 DROP TRIGGER history_trigger_row ON object_res1.main;
 --deactivate logging for statement trigger
 DROP TRIGGER history_trigger_stm ON object_res1.main;
-
---TODO: check statement trigger - still error when trying to run (could be better sort of trigger for dataentry form -> only one logged action per object table instead of 60 for each attribute?!)
 
 ------------------------------------------------------------------------
 -- Example for "get history transaction time query" ttime_gethistory(tbl)--
