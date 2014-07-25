@@ -1,31 +1,35 @@
 ﻿----------------------------------------------------------------------------
 -- Example for activation/deactivation of logging transactions on a table --
 ----------------------------------------------------------------------------
--- selective transaction logs: history.history_table(target_table regclass, audit_rows boolean, audit_query_text boolean, excluded_cols text[]) 
-SELECT history.history_table('object_res1.main_detail');
-SELECT history.history_table('object_res1.main_detail_qualifier', 'true', 'false');
-SELECT history.history_table('object_res1.main', 'true', 'false', '{res2_id, res3_id}'::text[]);
+-- selective transaction logs: history.history_table(target_table regclass, history_view boolean, history_query_text boolean, excluded_cols text[]) 
+SELECT history.history_table('object_res1.main');	--short call to activate table log with query text activated and no excluded cols
+SELECT history.history_table('object_res1.main', 'false', 'true');	--same as above but as full call
+SELECT history.history_table('object_res1.main', 'false', 'false', '{res2_id, res3_id}'::text[]);	--activate table log with no query text activated and excluded cols specified
+SELECT history.history_table('object_res1.ve_resolution1', 'true', 'false', '{source, res2_id, res3_id}'::text[]);	--activate logs for a view
 
---deactivate logging for row trigger
-DROP TRIGGER history_trigger_row ON object_res1.main;
---deactivate logging for statement trigger
-DROP TRIGGER history_trigger_stm ON object_res1.main;
+--deactivate transaction logs for views
+DROP TRIGGER IF EXISTS zhistory_trigger_row ON object_res1.ve_resolution1;
+DROP TRIGGER IF EXISTS zhistory_trigger_row_modified ON history.logged_actions;
+
+--deactivate transaction logs for table
+DROP TRIGGER IF EXISTS history_trigger_row ON object_res1.main;
 
 ------------------------------------------------------------------------
 -- Example for "get history transaction time query" ttime_gethistory(tbl)--
 ------------------------------------------------------------------------
 -- This gives the full transaction time history (all the logged changes) of a specified object primitive
 --example query (note: structure of results table has to be defined in query)
+
+
+--TODO CONTINUE HERE
+select column_name, data_type from information_schema.columns where table_name = 've_resolution1'
+
+select string_agg(column_name || ' ' || data_type, ',') from information_schema.columns where table_name = 've_resolution1'
+
 SELECT * FROM history.ttime_gethistory('object_res1.main') 
-	main (gid integer, 
-	      survey_gid integer, 
-	      description character varying, 
-	      source text, 
-	      res2_id integer, 
-	      res3_id integer, 
-	      the_geom geometry, 
-	      transaction_timestamp timestamptz, 
-	      transaction_type text) where gid=2;
+	main ();
+
+	
 --example view
 CREATE OR REPLACE VIEW object_res1.ttime_gethistory AS
 SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * FROM history.ttime_gethistory('object_res1.main') 
@@ -80,6 +84,23 @@ SELECT * FROM history.ttime_inside('object_res1.main', '2014-07-19 16:00:00', '2
 CREATE OR REPLACE VIEW object.vtime_gethistory AS
 SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid,* FROM history.vtime_gethistory() WHERE gid=278;
 
+
+select * from history.vtime_gethistory('object_res1', 'qualifier_timestamp_1', 'qualifier_timestamp_2')
+	main (id int
+	      gid int,
+	      object_id int,
+	      res2_id int,
+	      res3_id int,
+	      attribute_type_code varchar,
+	      attribute_value varchar,
+	      attribute_numeric_1 numeric,
+	      attribute_numeric_2 numeric,
+	      attribute_text_1 varchar,
+	      the_geom geometry,
+	      valid_timestamp_1 timestamptz,
+	      valid_timestamp_2 timestamptz,
+	      transaction_timestamp timestamptz,
+	      transaction_type text);
 
 -----------------------------------------------------------------------------------------------------------------
 -------------- Examples for "intersect valid time query" vtime_intersect(vtime_from, vtime_to) ------------------

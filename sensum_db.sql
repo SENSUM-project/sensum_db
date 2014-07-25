@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution, multi-temporal database model 
 -- Version: 0.9.1
--- Date: 10.07.14
+-- Date: 21.07.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the basic data model with hstore and postgis support.  
@@ -26,38 +26,6 @@ CREATE SCHEMA object_res2;
 CREATE SCHEMA object_res3;
 
 CREATE SCHEMA history;
-
-CREATE SEQUENCE taxonomy.dic_attribute_type_gid_seq START WITH 1;
-
-CREATE SEQUENCE taxonomy.dic_attribute_value_gid_seq START WITH 1;
-
-CREATE SEQUENCE taxonomy.dic_qualifier_type_gid_seq START WITH 1;
-
-CREATE SEQUENCE taxonomy.dic_qualifier_value_gid_seq START WITH 1;
-
-CREATE SEQUENCE taxonomy.dic_taxonomy_gid_seq START WITH 1;
-
-CREATE SEQUENCE taxonomy.hazard_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res1.main_detail_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res1.main_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res1.main_detail_qualifier_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res2.main_detail_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res2.main_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res2.main_detail_qualifier_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res3.main_detail_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res3.main_gid_seq START WITH 1;
-
-CREATE SEQUENCE object_res3.main_detail_qualifier_gid_seq START WITH 1;
-
-CREATE SEQUENCE history.logged_actions_gid_seq START WITH 1;
 
 CREATE TABLE taxonomy.dic_qualifier_type ( 
 	gid                  serial NOT NULL,
@@ -493,7 +461,6 @@ CREATE TABLE history.logged_actions (
 	old_record           hstore,
 	new_record           hstore,
 	changed_fields       hstore,
-	statement_only 	     BOOLEAN NOT NULL,
 	CONSTRAINT logged_actions_pkey PRIMARY KEY ( gid )
  );
 

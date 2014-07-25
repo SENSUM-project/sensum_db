@@ -2,7 +2,7 @@
 ------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution database support
 -- Version: 0.9.1
--- Date: 10.07.14
+-- Date: 25.07.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-resolution support to the basic SENSUM data model.
@@ -119,6 +119,20 @@ BEGIN
        DELETE FROM object_res1.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res1.main_detail WHERE object_id=OLD.gid);
        DELETE FROM object_res1.main_detail WHERE object_id=OLD.gid;
        DELETE FROM object_res1.main WHERE gid=OLD.gid;
+       --workaround to log row information after delete if transaction logging on view is active (because it is not possible to define a AFTER FOR EACH ROW trigger on a view)
+       IF EXISTS (SELECT event_object_schema, trigger_name FROM information_schema.triggers WHERE event_object_schema = 'object_res1' AND trigger_name = 'zhistory_trigger_row') THEN
+       	       INSERT INTO history.logged_actions VALUES(
+	        NEXTVAL('history.logged_actions_gid_seq'),    -- gid
+		TG_TABLE_SCHEMA::text,                        -- schema_name
+		TG_TABLE_NAME::text,                          -- table_name
+		TG_RELID,                                     -- relation OID for much quicker searches
+		txid_current(),                               -- transaction_id
+		session_user::text,                           -- transaction_user
+		current_timestamp,                            -- transaction_time
+		NULL,                              	      -- top-level query or queries (if multistatement) from client
+		'D',					      -- transaction_type
+		hstore(OLD.*), NULL, NULL);                   -- old_record, new_record, changed_fields
+	END IF;
        RETURN NULL;
       END IF;
       RETURN NEW;
@@ -158,6 +172,20 @@ BEGIN
        DELETE FROM object_res2.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res2.main_detail WHERE object_id=OLD.gid);
        DELETE FROM object_res2.main_detail WHERE object_id=OLD.gid;
        DELETE FROM object_res2.main WHERE gid=OLD.gid;
+       --workaround to log row information after delete if transaction logging on view is active (because it is not possible to define a AFTER FOR EACH ROW trigger on a view)
+       IF EXISTS (SELECT event_object_schema, trigger_name FROM information_schema.triggers WHERE event_object_schema = 'object_res2' AND trigger_name = 'zhistory_trigger_row') THEN
+	       INSERT INTO history.logged_actions VALUES(
+	        NEXTVAL('history.logged_actions_gid_seq'),    -- gid
+		TG_TABLE_SCHEMA::text,                        -- schema_name
+		TG_TABLE_NAME::text,                          -- table_name
+		TG_RELID,                                     -- relation OID for much quicker searches
+		txid_current(),                               -- transaction_id
+		session_user::text,                           -- transaction_user
+		current_timestamp,                            -- transaction_time
+		NULL,                              	      -- top-level query or queries (if multistatement) from client
+		'D',					      -- transaction_type
+		hstore(OLD.*), NULL, NULL);                   -- old_record, new_record, changed_fields
+	END IF;
        RETURN NULL;
       END IF;
       RETURN NEW;
@@ -196,6 +224,20 @@ BEGIN
        DELETE FROM object_res3.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res3.main_detail WHERE object_id=OLD.gid);
        DELETE FROM object_res3.main_detail WHERE object_id=OLD.gid;
        DELETE FROM object_res3.main WHERE gid=OLD.gid;
+       --workaround to log row information after delete if transaction logging on view is active (because it is not possible to define a AFTER FOR EACH ROW trigger on a view)
+       IF EXISTS (SELECT event_object_schema, trigger_name FROM information_schema.triggers WHERE event_object_schema = 'object_res3' AND trigger_name = 'zhistory_trigger_row') THEN
+	       INSERT INTO history.logged_actions VALUES(
+	        NEXTVAL('history.logged_actions_gid_seq'),    -- gid
+		TG_TABLE_SCHEMA::text,                        -- schema_name
+		TG_TABLE_NAME::text,                          -- table_name
+		TG_RELID,                                     -- relation OID for much quicker searches
+		txid_current(),                               -- transaction_id
+		session_user::text,                           -- transaction_user
+		current_timestamp,                            -- transaction_time
+		NULL,                              	      -- top-level query or queries (if multistatement) from client
+		'D',					      -- transaction_type
+		hstore(OLD.*), NULL, NULL);                   -- old_record, new_record, changed_fields
+	END IF;
        RETURN NULL;
       END IF;
       RETURN NEW;
@@ -208,7 +250,7 @@ This function makes the resolution 3 view editable and forwards the edits to the
 $body$;
 
 DROP TRIGGER IF EXISTS res3_trigger ON object_res3.ve_resolution3;
-CREATE TRIGGER res1_trigger
+CREATE TRIGGER res3_trigger
     INSTEAD OF INSERT OR UPDATE OR DELETE ON object_res3.ve_resolution3 
       FOR EACH ROW 
       EXECUTE PROCEDURE object_res3.edit_resolution_view();

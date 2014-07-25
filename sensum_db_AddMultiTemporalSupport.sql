@@ -1,12 +1,12 @@
 ﻿----------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-temporal database support
--- Version: 0.9
--- Date: 19.06.14
+-- Version: 0.91
+-- Date: 25.07.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-temporal support to the basic SENSUM data model.
---		1. Adds trigger functions to log database transactions for selected tables and optionally columns
+--		1. Adds trigger functions to log database transactions for selected tables or views
 --		   (reference: http://wiki.postgresql.org/wiki/Audit_trigger_91plus)
 --		2. Adds temporal query functions for transaction time and valid time
 ----------------------------------------------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 ------------------------------------------------
 -- Create trigger function to log transactions--
 ------------------------------------------------
-CREATE OR REPLACE FUNCTION history.if_modified_func() 
+CREATE OR REPLACE FUNCTION history.if_modified() 
 RETURNS TRIGGER AS 
 $body$
 DECLARE
@@ -26,10 +26,6 @@ DECLARE
     h_new hstore;
     excluded_cols text[] = ARRAY[]::text[];
 BEGIN
-    IF TG_WHEN <> 'AFTER' THEN
-        RAISE EXCEPTION 'history.if_modified_func() may only run as an AFTER trigger';
-    END IF;
- 
     history_row = ROW(
         NEXTVAL('history.logged_actions_gid_seq'),    -- gid
         TG_TABLE_SCHEMA::text,                        -- schema_name
@@ -40,8 +36,7 @@ BEGIN
         current_timestamp,                            -- transaction_time
         current_query(),                              -- top-level query or queries (if multistatement) from client
         substring(TG_OP,1,1),                         -- transaction_type
-        NULL, NULL, NULL,                             -- old_record, new_record, changed_fields
-        'f'                                           -- statement_only
+        NULL, NULL, NULL                             -- old_record, new_record, changed_fields
         );
  
     IF NOT TG_ARGV[0]::BOOLEAN IS DISTINCT FROM 'f'::BOOLEAN THEN
@@ -64,8 +59,6 @@ BEGIN
 	history_row.old_record = hstore(OLD.*);
     ELSIF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
 	history_row.new_record = hstore(NEW.*);
-    ELSIF (TG_LEVEL = 'STATEMENT' AND TG_OP IN ('INSERT','UPDATE','DELETE','TRUNCATE')) THEN
-        history_row.statement_only = 't';
     ELSE
         RAISE EXCEPTION '[history.if_modified_func] - Trigger func added as trigger for unhandled case: %, %',TG_OP, TG_LEVEL;
         RETURN NULL;
@@ -78,66 +71,92 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public;
 
-COMMENT ON FUNCTION history.if_modified_func() IS $body$
-Track changes TO a TABLE at the statement AND/OR row level.
+COMMENT ON FUNCTION history.if_modified() IS $body$
+Track changes TO a TABLE or a VIEW at the row level.
 Optional parameters TO TRIGGER IN CREATE TRIGGER call:
 param 0: BOOLEAN, whether TO log the query text. DEFAULT 't'.
 param 1: text[], COLUMNS TO IGNORE IN updates. DEFAULT [].
 
-         Updates TO ignored cols are included in new_record.
+         Note: Updates TO ignored cols are included in new_record.
          Updates WITH only ignored cols changed are NOT inserted
          INTO the history log.
-         Almost ALL the processing work IS still done FOR updates
-         that ignored. IF you need TO save the LOAD, you need TO USE
-         WHEN clause ON the TRIGGER instead.
-         No warning OR error IS issued IF ignored_cols contains COLUMNS
-         that do NOT exist IN the target TABLE. This lets you specify
-         a standard SET of ignored COLUMNS.
-
-There IS no parameter TO disable logging of VALUES. ADD this TRIGGER AS
-a 'FOR EACH STATEMENT' rather than 'FOR EACH ROW' TRIGGER IF you do NOT
-want TO log row VALUES.
- 
-Note that the user name logged IS the login role FOR the session. The history TRIGGER
-cannot obtain the active role because it IS reset BY the SECURITY DEFINER invocation
-of the history TRIGGER its self.
+         There IS no parameter TO disable logging of VALUES. ADD this TRIGGER AS
+         a 'FOR EACH STATEMENT' rather than 'FOR EACH ROW' TRIGGER IF you do NOT
+         want TO log row VALUES.
 $body$;
 
--------------------------------------------------------------------------
--- Create function to activate transaction logging for a specific table--
--------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_rows BOOLEAN, history_query_text BOOLEAN, ignored_cols text[]) 
+---------------------------------------------------------------------------------------
+-- Create trigger function to update gid in logged transactions when a view is logged--
+---------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION history.if_modified_view()
+RETURNS TRIGGER AS 
+$BODY$
+DECLARE
+    tbl regclass;
+BEGIN
+    --IF (SELECT transaction_type FROM history.logged_actions WHERE gid=(SELECT max(gid) FROM history.logged_actions)) = 'I' THEN
+	FOR tbl IN
+	    --get dynamic table name
+	    SELECT schema_name::text || '.' || table_name::text FROM history.logged_actions WHERE gid=(SELECT max(gid) FROM history.logged_actions)
+	LOOP
+	    EXECUTE '
+	    UPDATE history.logged_actions SET 
+		new_record = (SELECT hstore('|| tbl ||'.*) FROM '|| tbl ||' WHERE gid=(SELECT max(gid) FROM '|| tbl ||' ))
+		WHERE gid=(SELECT max(gid) FROM history.logged_actions);
+	    ';
+	END LOOP;
+    --END IF;
+    RETURN NULL;
+END;
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.if_modified_view() IS $body$
+This function updates the gid of a view in the logged actions table for the INSERT statement.
+$body$;
+
+---------------------------------------------------------------------------------
+-- Create function to activate transaction logging for a specific table or view--
+---------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_view BOOLEAN, history_query_text BOOLEAN, ignored_cols text[]) 
 RETURNS void AS 
 $body$
 DECLARE
-  stm_targets text = 'INSERT OR UPDATE OR DELETE OR TRUNCATE';
   _q_txt text;
   _ignored_cols_snip text = '';
 BEGIN
-    EXECUTE 'DROP TRIGGER IF EXISTS history_trigger_row ON ' || target_table::text;
-    EXECUTE 'DROP TRIGGER IF EXISTS history_trigger_stm ON ' || target_table::text;
- 
-    IF history_rows THEN
-        IF array_length(ignored_cols,1) > 0 THEN
-            _ignored_cols_snip = ', ' || quote_literal(ignored_cols);
-        END IF;
-        _q_txt = 'CREATE TRIGGER history_trigger_row AFTER INSERT OR UPDATE OR DELETE ON ' || 
-                 target_table::text || 
-                 ' FOR EACH ROW EXECUTE PROCEDURE history.if_modified_func(' ||
-                 quote_literal(history_query_text) || _ignored_cols_snip || ');';
-        RAISE NOTICE '%',_q_txt;
-        EXECUTE _q_txt;
-        stm_targets = 'TRUNCATE';
+    IF history_view THEN
+	    --create trigger on view (use instead of trigger) - note: in case of multiple triggers on the same table/view the execution order is alphabetical
+	    IF array_length(ignored_cols,1) > 0 THEN
+		_ignored_cols_snip = ', ' || quote_literal(ignored_cols);
+	    END IF;
+	    
+	    EXECUTE 'DROP TRIGGER IF EXISTS zhistory_trigger_row ON ' || target_table::text;
+	    _q_txt = 'CREATE TRIGGER zhistory_trigger_row INSTEAD OF INSERT OR UPDATE ON ' ||
+		     target_table::text ||
+		     ' FOR EACH ROW EXECUTE PROCEDURE history.if_modified(' || 
+			quote_literal(history_query_text) || _ignored_cols_snip || ');';
+	    RAISE NOTICE '%',_q_txt;
+	    EXECUTE _q_txt;
+
+	    EXECUTE 'DROP TRIGGER IF EXISTS zhistory_trigger_row_modified ON history.logged_actions';
+	    _q_txt = 'CREATE TRIGGER zhistory_trigger_row_modified AFTER INSERT ON history.logged_actions 
+			FOR EACH ROW EXECUTE PROCEDURE history.if_modified_view();';
+	    RAISE NOTICE '%',_q_txt;
+	    EXECUTE _q_txt;
     ELSE
+	    --create trigger on table (use after trigger)
+	    IF array_length(ignored_cols,1) > 0 THEN
+		_ignored_cols_snip = ', ' || quote_literal(ignored_cols);
+	    END IF;
+
+	    EXECUTE 'DROP TRIGGER IF EXISTS history_trigger_row ON ' || target_table::text;
+            _q_txt = 'CREATE TRIGGER history_trigger_row AFTER INSERT OR UPDATE OR DELETE ON ' || 
+                     target_table::text || 
+                     ' FOR EACH ROW EXECUTE PROCEDURE history.if_modified(' ||
+                     quote_literal(history_query_text) || _ignored_cols_snip || ');';
+            RAISE NOTICE '%',_q_txt;
+            EXECUTE _q_txt;
     END IF;
- 
-    _q_txt = 'CREATE TRIGGER history_trigger_stm AFTER ' || stm_targets || ' ON ' ||
-             target_table::text ||
-             ' FOR EACH STATEMENT EXECUTE PROCEDURE history.if_modified_func('||
-             quote_literal(history_query_text) || ');';
-    RAISE NOTICE '%',_q_txt;
-    EXECUTE _q_txt;
- 
 END;
 $body$
 LANGUAGE 'plpgsql';
@@ -146,36 +165,35 @@ COMMENT ON FUNCTION history.history_table(regclass, BOOLEAN, BOOLEAN, text[]) IS
 ADD transaction logging support TO a TABLE.
 
 Arguments:
-   target_table:     TABLE name, schema qualified IF NOT ON search_path
-   history_rows:       Record each row CHANGE, OR only history at a statement level
+   target_table:       TABLE name, schema qualified IF NOT ON search_path
+   history_view:       Activate trigger for view (true) or for table (false)
    history_query_text: Record the text of the client query that triggered the history event?
-   ignored_cols:     COLUMNS TO exclude FROM UPDATE diffs, IGNORE updates that CHANGE only ignored cols.
+   ignored_cols:       COLUMNS TO exclude FROM UPDATE diffs, IGNORE updates that CHANGE only ignored cols.
 $body$;
 
 ---------------------------------------------------------------------------------
 -- Provide a wrapper because Pg does not allow variadic calls with 0 parameters--
 ---------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_rows BOOLEAN, history_query_text BOOLEAN) 
+CREATE OR REPLACE FUNCTION history.history_table(target_table regclass, history_view BOOLEAN, history_query_text BOOLEAN) 
 RETURNS void AS 
 $body$
 SELECT history.history_table($1, $2, $3, ARRAY[]::text[]);
 $body$ 
 LANGUAGE SQL;
 
----------------------------------------------------------------------------------------------------------------------------------
--- Provide a convenience call wrapper for the simplest case (row-level logging with no excluded cols and query logging enabled)--
----------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------
+-- Provide a convenience call wrapper for the simplest case (row-level logging on table with no excluded cols and query logging enabled)--
+------------------------------------------------------------------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION history.history_table(target_table regclass) 
 RETURNS void AS 
 $$
-SELECT history.history_table($1, BOOLEAN 't', BOOLEAN 't');
+SELECT history.history_table($1, BOOLEAN 'f', BOOLEAN 't');
 $$ 
 LANGUAGE 'sql';
  
 COMMENT ON FUNCTION history.history_table(regclass) IS $body$
 ADD auditing support TO the given TABLE. Row-level changes will be logged WITH FULL query text. No cols are ignored.
 $body$;
-
 
 ------------------------------------------------------
 -- Add transaction time query function (getHistory) --
@@ -272,181 +290,80 @@ Arguments:
    ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
 $body$;
 
+
+/*
+
+--TODO: adjust the following time queries to work on a single table or view
+
 ------------------------------------------------
 -- Add valid time query function (getHistory) --
 ------------------------------------------------
-CREATE OR REPLACE FUNCTION history.vtime_gethistory(tbl character varying, vtime_col character varying)
+CREATE OR REPLACE FUNCTION history.vtime_gethistory(schema character varying, vtime_col1 character varying, vtime_col2 character varying)
 RETURNS SETOF RECORD AS
 $BODY$
 BEGIN
     RETURN QUERY EXECUTE '
-
-
+	SELECT * FROM (
+		--query1: query new_record column to get the latest UPDATE records
+		SELECT  n3.gid as id, n3.*, n2.*, n1.* FROM
+			(SELECT DISTINCT ON (a.new_record->''gid'') (populate_record(null::'||schema||'.main_detail_qualifier, a.new_record)).*, a.transaction_time as ttime, a.transaction_type FROM history.logged_actions AS a 
+			WHERE a.table_name = ''main_detail_qualifier'' AND exist(a.changed_fields,'''||vtime_col1||''')
+			OR a.table_name = ''main_detail_qualifier'' AND exist(a.changed_fields,'''||vtime_col2||''')	
+			ORDER BY a.new_record->''gid'', a.transaction_time DESC) n1
+			LEFT JOIN 
+			(SELECT DISTINCT ON (b.new_record->''gid'') (populate_record(null::'||schema||'.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
+			WHERE b.table_name = ''main_detail''
+			ORDER BY b.new_record->''gid'', b.transaction_time DESC) n2
+			ON (n2.gid = n1.detail_id)
+			JOIN 
+			'||schema||'.main AS n3 
+			ON (n3.gid = n2.object_id)
+		UNION ALL
+		--query2: query new_record column to get the UPDATE and INSERT records
+		SELECT  n3.gid as id, n3.*, n2.*, n1.* FROM
+			(SELECT (populate_record(null::'||schema||'.main_detail_qualifier, a.new_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
+			WHERE a.table_name = ''main_detail_qualifier'' AND exist(a.changed_fields,'''||vtime_col1||''')
+			OR a.table_name = ''main_detail_qualifier'' AND exist(a.changed_fields,'''||vtime_col2||''')	--select records that were UPDATE and that caused a change to the transaction_time (=real world change)
+			OR a.table_name = ''main_detail_qualifier'' AND a.transaction_type = ''I''	--select records that were INSERTED
+			ORDER BY a.transaction_time DESC OFFSET 1) n1	--OFFSET 1 to remove the latest UPDATE record (will be substituted by query1 result which gives the latest version in the database and not the latest version before or at n1.transaction_time)
+			LEFT JOIN 
+			(SELECT (populate_record(null::'||schema||'.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
+			WHERE b.table_name = ''main_detail''
+			ORDER BY b.transaction_time) n2
+			ON (n2.gid = n1.detail_id AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = ''main_detail'' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
+			JOIN 
+			'||schema||'.main AS n3 
+			ON (n3.gid = n2.object_id)
+		UNION ALL
+		--query3: query old_record column to get the DELETE records
+		SELECT  n3.gid as id, n3.*, n2.*, n1.* FROM 
+			(SELECT (populate_record(null::'||schema||'.main_detail_qualifier, a.old_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
+			WHERE a.table_name = ''main_detail_qualifier'' AND a.old_record->'''||vtime_col1||'''!='''' AND a.transaction_type = ''D''
+			OR a.table_name = ''main_detail_qualifier'' AND a.old_record->'''||vtime_col2||'''!='''' AND a.transaction_type = ''D''
+			ORDER BY a.old_record->''gid'', a.transaction_time DESC) n1
+			LEFT JOIN 
+			(SELECT (populate_record(null::'||schema||'.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
+			WHERE b.table_name = ''main_detail''
+			ORDER BY b.old_record->''gid'', b.transaction_time DESC) n2
+			ON (n2.gid = n1.detail_id 
+			AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = ''main_detail'' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
+			JOIN 
+			'||schema||'.main AS n3 
+			ON (n3.gid = n2.object_id)
+	) n0 ORDER BY n0.id, n0.ttime DESC;
 	';
 END;
 $BODY$
 LANGUAGE plpgsql;
-COMMENT ON FUNCTION history.vtime_gethistory(tbl character varying, vtime_col character varying) IS $body$
+COMMENT ON FUNCTION history.vtime_gethistory(schema character varying, vtime_col1 character varying, vtime_col2 character varying) IS $body$
 This function searches history.logged_actions to get all real world changes with the corresponding latest version for each object primitive at each valid time.
 
 Arguments:
-   tbl:		schema.table character varying
-   vtime_col:	valid time column
+   schema:		schema that holds the main, main_detail and main_detail_qualifier tables character varying
+   vtime_col1:	valid time column 1
+   vtime_col2:	valid time column 2
 $body$;
-
-
-
-
-
-CREATE OR REPLACE FUNCTION history.vtime_gethistory() 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-valid_timestamp_1 timestamptz,
-valid_timestamp_2 timestamptz,
-transaction_timestamp timestamptz,
-transaction_type text
-) AS
-$BODY$
-BEGIN
-	RETURN QUERY SELECT * FROM (
-
-	--query1: query new_record column to get the latest UPDATE records
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2,
-	n1.transaction_time,
-	n1.transaction_type
-	FROM
-	
-	(SELECT DISTINCT ON (a.new_record->'gid') (populate_record(null::object.main_detail_qualifier, a.new_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_1')
-	OR a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_2')	
-	ORDER BY a.new_record->'gid', a.transaction_time DESC) n1
-
-	LEFT JOIN 
-
-	(SELECT DISTINCT ON (b.new_record->'gid') (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.new_record->'gid', b.transaction_time DESC) n2
-	
-	ON (n2.gid = n1.detail_id)
-	
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	UNION ALL
-
-	--query2: query new_record column to get the UPDATE and INSERT records
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2,
-	n1.transaction_time,
-	n1.transaction_type
-	FROM
-
-	(SELECT (populate_record(null::object.main_detail_qualifier, a.new_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_1')
-	OR a.table_name = 'main_detail_qualifier' AND exist(a.changed_fields,'qualifier_timestamp_2')	--select records that were UPDATE and that caused a change to the transaction_time (=real world change)
-	OR a.table_name = 'main_detail_qualifier' AND a.transaction_type = 'I'	--select records that were INSERTED
-	ORDER BY a.transaction_time DESC OFFSET 1) n1	--OFFSET 1 to remove the latest UPDATE record (will be substituted by query1 result which gives the latest version in the database and not the latest version before or at n1.transaction_time)
-
-	LEFT JOIN 
-
-	(SELECT (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.transaction_time) n2
-	
-	ON (n2.gid = n1.detail_id 
-	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
-
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-	
-	UNION ALL
-
-	--query3: query old_record column to get the DELETE records
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2,
-	n1.transaction_time,
-	n1.transaction_type
-	FROM
-
-	(SELECT (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time, a.transaction_type FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_1'!='' AND a.transaction_type = 'D'
-	OR a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_2'!='' AND a.transaction_type = 'D'
-	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1
-	
-	LEFT JOIN 
-
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2
-
-	ON (n2.gid = n1.detail_id 
-	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
-
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	) n0 ORDER BY n0.gid, n0.transaction_time DESC;
-END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.vtime_gethistory() IS $body$
-This function searches history.logged_actions to get all real world changes with the corresponding latest version for each object primitive at each valid time.
-$body$;
-
-
-
-
+*/
 /*
 --TODO: ADJUST THE FOLLOWING TEMPORAL QUERIES TO NEW TABLE STRUCTURES AND MAKE THEM EASIER AND APPLICABLE TO ANY TABLE STRUCTURES!!!!
 ------------------------------------------------
