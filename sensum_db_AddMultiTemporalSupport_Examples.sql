@@ -7,31 +7,29 @@ SELECT history.history_table('object_res1.main', 'false', 'true');	--same as abo
 SELECT history.history_table('object_res1.main', 'false', 'false', '{res2_id, res3_id}'::text[]);	--activate table log with no query text activated and excluded cols specified
 SELECT history.history_table('object_res1.ve_resolution1', 'true', 'false', '{source, res2_id, res3_id}'::text[]);	--activate logs for a view
 
---deactivate transaction logs for views
+--deactivate transaction logs on table
+DROP TRIGGER IF EXISTS history_trigger_row ON object_res1.main;
+
+--deactivate transaction logs on view
 DROP TRIGGER IF EXISTS zhistory_trigger_row ON object_res1.ve_resolution1;
 DROP TRIGGER IF EXISTS zhistory_trigger_row_modified ON history.logged_actions;
 
---deactivate transaction logs for table
-DROP TRIGGER IF EXISTS history_trigger_row ON object_res1.main;
+---------------------------------------------------------------------------------------
+-- Example for "get history transaction time query" ttime_gethistory(tbl_in, tbl_out)--
+---------------------------------------------------------------------------------------
+-- This gives the full transaction time history (all the logged changes) of a table/view and writes it to a view
+SELECT * FROM history.ttime_gethistory('object_res1.ve_resolution1', 'history.ttime_history');
 
-------------------------------------------------------------------------
--- Example for "get history transaction time query" ttime_gethistory(tbl)--
-------------------------------------------------------------------------
--- This gives the full transaction time history (all the logged changes) of a specified object primitive
---example query (note: structure of results table has to be defined in query)
+-- Same as above, but output as records. 
+-- Note: structure of results has to be defined manually (=structure of input table + transaction_timestamp timestamptz, transaction_type text). 
+-- Note: this allows also to filter the results using WHERE statement.
+SELECT * FROM history.ttime_gethistory('object_res1.ve_resolution1') 
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) WHERE gid=2;
 
-
---TODO CONTINUE HERE
-select column_name, data_type from information_schema.columns where table_name = 've_resolution1'
-
-select string_agg(column_name || ' ' || data_type, ',') from information_schema.columns where table_name = 've_resolution1'
-
-SELECT * FROM history.ttime_gethistory('object_res1.main') 
-	main ();
-
-	
---example view
-CREATE OR REPLACE VIEW object_res1.ttime_gethistory AS
+-- Custom view
+CREATE OR REPLACE VIEW history.ttime_gethistory_custom AS
 SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * FROM history.ttime_gethistory('object_res1.main') 
 	main (gid integer, 
 	      survey_gid integer, 
@@ -41,40 +39,38 @@ SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * FROM h
 	      res3_id integer, 
 	      the_geom geometry, 
 	      transaction_timestamp timestamptz, 
-	      transaction_type text) where gid=2;
+	      transaction_type text) WHERE gid=2;
+	      
+------------------------------------------------------------------------------------
+-- Example for "equals transaction time query" ttime_equal(tbl_in, tbl_out, ttime)--
+------------------------------------------------------------------------------------
+-- This gives all the object primitives that were modified at the queried transaction time ("AT t") and writes the results to a view
+SELECT * FROM history.ttime_equal('object_res1.ve_resolution1','history.ttime_equal','2014-07-27 16:38:53.344857+02');
 
--------------------------------------------------------------------
--- Example for "equals transaction time query" ttime_equal(ttime)--
--------------------------------------------------------------------
--- This gives all the object primitives that were modified at the queried transaction time ("AT t")
-CREATE OR REPLACE VIEW object_res1.ttime_equal AS
-SELECT * FROM history.ttime_equal('object_res1.main', '2014-07-19 13:56:18.714175+02')
-	main (gid integer, 
-	      survey_gid integer, 
-	      description character varying, 
-	      source text, 
-	      res2_id integer, 
-	      res3_id integer, 
-	      the_geom geometry, 
+-- Same as above, but output as records
+SELECT * FROM history.ttime_equal('object_res1.ve_resolution1', '2014-07-27 16:38:53.344857+02')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz, 
 	      transaction_timestamp timestamptz, 
 	      transaction_type text);
 
------------------------------------------------------------------------------------
--- Example for "inside transaction time query" ttime_inside(ttime_from, ttime_to)--
------------------------------------------------------------------------------------
--- This gives all the object primitives that were modified within the queried transaction time range
-CREATE OR REPLACE VIEW object_res1.ttime_inside AS
-SELECT * FROM history.ttime_inside('object_res1.main', '2014-07-19 16:00:00', '2014-07-19 16:40:00')
-	main (gid integer, 
-	      survey_gid integer, 
-	      description character varying, 
-	      source text, 
-	      res2_id integer, 
-	      res3_id integer, 
-	      the_geom geometry, 
+----------------------------------------------------------------------------------------------------
+-- Example for "inside transaction time query" ttime_inside(tbl_in, tbl_out, ttime_from, ttime_to)--
+----------------------------------------------------------------------------------------------------
+-- This gives all the object primitives that were modified within the queried transaction time range and writes it to a view
+SELECT * FROM history.ttime_inside('object_res1.ve_resolution1', 'history.ttime_inside', '2014-07-19 16:00:00', now()::timestamp);
+
+-- Same as above, but output as records
+SELECT * FROM history.ttime_inside('object_res1.ve_resolution1', '2014-07-19 16:00:00', now()::timestamp)
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz, 
 	      transaction_timestamp timestamptz, 
 	      transaction_type text);
 
+/*
+insert into object_res1.ve_resolution1 (source) values ('test');
+insert into object_res1.ve_resolution1 (description) values ('marc321');
+update object_res1.ve_resolution1 set description='marc111' where gid=15;
+update object_res1.ve_resolution1 set source='marc111' where gid=15;
+*/
 
 --TODO: adjust following queries
 ------------------------------------------------------------------

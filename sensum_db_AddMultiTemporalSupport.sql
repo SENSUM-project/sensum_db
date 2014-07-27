@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-temporal database support
 -- Version: 0.91
--- Date: 25.07.14
+-- Date: 27.07.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-temporal support to the basic SENSUM data model.
@@ -85,18 +85,18 @@ param 1: text[], COLUMNS TO IGNORE IN updates. DEFAULT [].
          want TO log row VALUES.
 $body$;
 
----------------------------------------------------------------------------------------
--- Create trigger function to update gid in logged transactions when a view is logged--
----------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+-- Create trigger function to update inserts in logged transactions when a view is logged--
+-------------------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION history.if_modified_view()
 RETURNS TRIGGER AS 
 $BODY$
 DECLARE
     tbl regclass;
 BEGIN
-    --IF (SELECT transaction_type FROM history.logged_actions WHERE gid=(SELECT max(gid) FROM history.logged_actions)) = 'I' THEN
+    IF NEW.transaction_type = 'I' THEN
 	FOR tbl IN
-	    --get dynamic table name
+	    --get table name
 	    SELECT schema_name::text || '.' || table_name::text FROM history.logged_actions WHERE gid=(SELECT max(gid) FROM history.logged_actions)
 	LOOP
 	    EXECUTE '
@@ -105,7 +105,7 @@ BEGIN
 		WHERE gid=(SELECT max(gid) FROM history.logged_actions);
 	    ';
 	END LOOP;
-    --END IF;
+    END IF;
     RETURN NULL;
 END;
 $BODY$
@@ -137,7 +137,7 @@ BEGIN
 			quote_literal(history_query_text) || _ignored_cols_snip || ');';
 	    RAISE NOTICE '%',_q_txt;
 	    EXECUTE _q_txt;
-
+	    --workaround to update all columns after insert on view (instead of trigger on view does not capture all inserts like gid)
 	    EXECUTE 'DROP TRIGGER IF EXISTS zhistory_trigger_row_modified ON history.logged_actions';
 	    _q_txt = 'CREATE TRIGGER zhistory_trigger_row_modified AFTER INSERT ON history.logged_actions 
 			FOR EACH ROW EXECUTE PROCEDURE history.if_modified_view();';
@@ -220,9 +220,33 @@ END;
 $BODY$
 LANGUAGE plpgsql;
 COMMENT ON FUNCTION history.ttime_gethistory(tbl character varying) IS $body$
-This function searches history.logged_actions to get all transactions of object primitives.
+This function searches history.logged_actions to get all transactions of object primitives. Results table structure needs to be defined manually. Returns set of records.
 Arguments:
    tbl:		schema.table character varying
+$body$;
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.ttime_gethistory(tbl_in character varying, tbl_out character varying)
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.ttime_gethistory('''|| tbl_in ||''') 
+			main ('|| tbl_struct ||', transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_gethistory(tbl_in character varying, tbl_out character varying) IS $body$
+This function searches history.logged_actions to get all transactions of object primitives. Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
 $body$;
 
 -------------------------------------------------
@@ -251,9 +275,34 @@ $BODY$
 LANGUAGE plpgsql;
 COMMENT ON FUNCTION history.ttime_equal(tbl character varying, ttime timestamp) IS $body$
 This function searches history.logged_actions to get the latest version of each object primitive whose transaction time equals the queried timestamp.
-
 Arguments:
    tbl:		schema.table character varying
+   ttime:	transaction time yyy-mm-dd hh:mm:ss
+$body$;
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.ttime_equal(tbl_in character varying, tbl_out character varying, ttime timestamp)
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.ttime_equal('''|| tbl_in ||''', '''|| ttime ||''') 
+			main ('|| tbl_struct ||', transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_equal(tbl_in character varying, tbl_out character varying, ttime timestamp) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive whose transaction time equals the queried timestamp. 
+Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
    ttime:	transaction time yyy-mm-dd hh:mm:ss
 $body$;
 
@@ -283,9 +332,36 @@ $BODY$
 LANGUAGE plpgsql;
 COMMENT ON FUNCTION history.ttime_inside(tbl character varying, ttime_from timestamp, ttime_to timestamp) IS $body$
 This function searches history.logged_actions to get the latest version of each object primitive that has been modified only within the queried transaction time.
-
+Results table structure needs to be defined manually. Returns set of records.
 Arguments:
    tbl:		schema.table character varying
+   ttime_from:	transaction time from yyy-mm-dd hh:mm:ss
+   ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
+$body$;
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.ttime_inside(tbl_in character varying, tbl_out character varying, ttime_from timestamp, ttime_to timestamp)
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.ttime_inside('''|| tbl_in ||''', '''|| ttime_from ||''', '''|| ttime_to ||''') 
+			main ('|| tbl_struct ||', transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.ttime_inside(tbl_in character varying, tbl_out character varying, ttime_from timestamp, ttime_to timestamp) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive that has been modified only within the queried transaction time.
+Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
    ttime_from:	transaction time from yyy-mm-dd hh:mm:ss
    ttime_to:	transaction time to yyy-mm-dd hh:mm:ss
 $body$;
