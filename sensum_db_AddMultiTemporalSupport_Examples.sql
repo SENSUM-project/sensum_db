@@ -99,31 +99,43 @@ SELECT * FROM history.vtime_gethistory('object_res1.ve_resolution1', 'yr_built_v
 	      transaction_type text) ORDER BY transaction_timestamp;
 
 
---TODO: adjust following queries
 -----------------------------------------------------------------------------------------------------------------
 -------------- Examples for "intersect valid time query" vtime_intersect(vtime_from, vtime_to) ------------------
 -----------------------------------------------------------------------------------------------------------------
 -- These queries search for object primitives whose valid time intersects with queried time range or timestamp --
 -----------------------------------------------------------------------------------------------------------------
--- This gives the latest version of all the object primitives at a defined resolution that were valid at some time during the queried time range and still may be valid ("BETWEEN t1 and t2")
-CREATE OR REPLACE VIEW object.vtime_intersect AS
-SELECT * FROM history.vtime_intersect('1991-02-15','1992-05-14') WHERE resolution=1;
+-- This gives the latest version of all the object primitives that were valid at some time during the queried time range and still may be valid ("BETWEEN t1 and t2")
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'history.vtime_history', 'yr_built_vt', 'yr_built_vt1', '1991-02-15','2002-05-14');
 
--- This gives the latest version of all the object primitives at a defined resolution that were valid at some time from the queried timestamp until now ("AFTER t")
-CREATE OR REPLACE VIEW object.vtime_intersect AS
-SELECT * FROM history.vtime_intersect('2005-05-16') WHERE resolution=1;
+-- Same as above, but output as records. 
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '1991-02-15','2002-05-14')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
--- This gives the latest version of all the object primitives at a defined resolution that were valid at some time before or at the queried timestamp and still may be valid ("BEFORE t")
-CREATE OR REPLACE VIEW object.vtime_intersect AS
-SELECT * FROM history.vtime_intersect('0001-01-01','2005-05-16') WHERE resolution=1;
+-- This gives the latest version of all the object primitives that were valid at some time from the queried timestamp until now ("AFTER t")
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '2001-05-16')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
--- This gives the latest version of all the object primitives at a defined resolution that were valid at the queried timestamp and still may be valid ("AT t")
-CREATE OR REPLACE VIEW object.vtime_intersect AS
-SELECT * FROM history.vtime_intersect('2001-05-16','2001-05-16') WHERE resolution=1;
+-- This gives the latest version of all the object primitives that were valid at some time before or at the queried timestamp and still may be valid ("BEFORE t")
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '0001-01-01','2000-05-16')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
--- This gives the latest version of all the object primitives at a defined resolution that were valid at some time from yesterday and still may be valid ("AT t")
-CREATE OR REPLACE VIEW object.vtime_intersect AS
-SELECT * FROM history.vtime_intersect('yesterday','yesterday') WHERE resolution=3;
+-- This gives the latest version of all the object primitives that were valid at the queried timestamp and still may be valid ("AT t")
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '2000-01-01','2000-01-01')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
+
+-- This gives the latest version of all the object primitives that were valid at some time from yesterday and still may be valid ("AT t")
+SELECT * FROM history.vtime_intersect('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', 'yesterday','yesterday')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
 
 -------------------------------------------------------------------------------------------------------------
@@ -132,16 +144,23 @@ SELECT * FROM history.vtime_intersect('yesterday','yesterday') WHERE resolution=
 -- These queries search for object primitives whose valid time is completely inside the queried time range --
 -------------------------------------------------------------------------------------------------------------
 -- This gives the latest version of all the object primitives at a defined resolution that were valid only within the queried time range ("BETWEEN t1 and t2")
-CREATE OR REPLACE VIEW object.vtime_inside AS
-SELECT * FROM history.vtime_inside('1980-02-15','2001-05-16') WHERE resolution=1;
-
--- This gives the latest version of all the object primitives at a defined resolution that were valid only within the time range from the queried timestamp until now ("AFTER t UNTIL now")
-CREATE OR REPLACE VIEW object.vtime_inside AS
-SELECT * FROM history.vtime_inside('1980-05-16') WHERE resolution=1;
+SELECT * FROM history.vtime_inside('object_res1.ve_resolution1', 'history.vtime_inside', 'yr_built_vt', 'yr_built_vt1', '2000-01-01 00:00:00+01','2002-01-01 00:00:00+01')
 
 -- This gives the latest version of all the object primitives at a defined resolution that were valid only until the queried timestamp ("BEFORE t")
-CREATE OR REPLACE VIEW object.vtime_inside AS
-SELECT * FROM history.vtime_inside('0001-01-01','2001-05-16') WHERE resolution=1;
+SELECT * FROM history.vtime_inside('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '0001-01-01','2013-05-16')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      vtime_from timestamptz,
+	      vtime_to timestamptz,
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
+
+-- This gives the latest version of all the object primitives at a defined resolution that were valid only within the time range from the queried timestamp until now ("AFTER t UNTIL now")
+SELECT * FROM history.vtime_inside('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '2002-05-16')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      vtime_from timestamptz,
+	      vtime_to timestamptz,
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
 
 -------------------------------------------------------------------------------------------------------
@@ -150,10 +169,18 @@ SELECT * FROM history.vtime_inside('0001-01-01','2001-05-16') WHERE resolution=1
 -- These queries search for object primitives whose valid time range is equal the queried time range --
 -------------------------------------------------------------------------------------------------------
 -- This gives the latest version of all the object primitives at a defined resolution that have the same valid time range as the queried time range ("BETWEEN t1 and t2")
-CREATE OR REPLACE VIEW object.vtime_equal AS
-SELECT * FROM history.vtime_equal('1980-05-15 00:00:00+02','2000-05-15 00:00:00+02');
+SELECT * FROM history.vtime_equal('object_res1.ve_resolution1', 'history.vtime_equal', 'yr_built_vt', 'yr_built_vt1', '2000-01-01 00:00:00+01','2002-01-01 00:00:00+01')
+
+-- Same as above, but output as records. 
+SELECT * FROM history.vtime_equal('object_res1.ve_resolution1', 'yr_built_vt', 'yr_built_vt1', '2000-01-01 00:00:00+01','2002-01-01 00:00:00+01')
+	main (gid int4,survey_gid int4,description varchar,source text,res2_id int4,res3_id int4,the_geom geometry,object_id int4,mat_type varchar,mat_tech varchar,mat_prop varchar,llrs varchar,llrs_duct varchar,height varchar,yr_built varchar,occupy varchar,occupy_dt varchar,position varchar,plan_shape varchar,str_irreg varchar,str_irreg_dt varchar,str_irreg_type varchar,nonstrcexw varchar,roof_shape varchar,roofcovmat varchar,roofsysmat varchar,roofsystyp varchar,roof_conn varchar,floor_mat varchar,floor_type varchar,floor_conn varchar,foundn_sys varchar,build_type varchar,build_subtype varchar,vuln varchar,vuln_1 numeric,vuln_2 numeric,height_1 numeric,height_2 numeric,object_id1 int4,mat_type_bp int4,mat_tech_bp int4,mat_prop_bp int4,llrs_bp int4,llrs_duct_bp int4,height_bp int4,yr_built_bp int4,occupy_bp int4,occupy_dt_bp int4,position_bp int4,plan_shape_bp int4,str_irreg_bp int4,str_irreg_dt_bp int4,str_irreg_type_bp int4,nonstrcexw_bp int4,roof_shape_bp int4,roofcovmat_bp int4,roofsysmat_bp int4,roofsystyp_bp int4,roof_conn_bp int4,floor_mat_bp int4,floor_type_bp int4,floor_conn_bp int4,foundn_sys_bp int4,build_type_bp int4,build_subtype_bp int4,vuln_bp int4,yr_built_vt varchar,yr_built_vt1 timestamptz,yr_built_vt2 timestamptz,  
+	      vtime_from timestamptz,
+	      vtime_to timestamptz,
+	      transaction_timestamp timestamptz, 
+	      transaction_type text) ORDER BY transaction_timestamp;
 
 
+--TODO: adjust following queries
 ------------------------------------------------------------------
 ------------ Example for "spatio-temporal queries" ---------------
 ------------------------------------------------------------------

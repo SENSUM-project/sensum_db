@@ -205,15 +205,18 @@ BEGIN
     RETURN QUERY EXECUTE '
 	--query1: query new_record column to get the UPDATE and INSERT records
 	(SELECT (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''U''
-	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''I''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_type=''U''
+		OR b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_type=''I''
 	ORDER BY b.transaction_time DESC)	
 
 	UNION ALL
 
 	--query2: query old_record column to get the DELETE records
 	(SELECT (populate_record(null::' ||tbl|| ', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_type=''D''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_type=''D''
 	ORDER BY b.transaction_time DESC);
 	';
 END;
@@ -259,7 +262,9 @@ BEGIN
     RETURN QUERY EXECUTE '
 	--query1: query new_record column to get the UPDATE and INSERT records
 	(SELECT (populate_record(null::'||tbl||', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''U''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_time = '''||ttime||''' 
+		AND b.transaction_type = ''U''
 	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''I''
 	ORDER BY b.new_record->''gid'', b.transaction_time DESC)
 	
@@ -267,7 +272,9 @@ BEGIN
 
 	--query2: query old_record column to get the DELETE records
 	(SELECT (populate_record(null::'||tbl||', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time = '''||ttime||''' AND b.transaction_type = ''D''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_time = '''||ttime||''' 
+		AND b.transaction_type = ''D''
 	ORDER BY b.old_record->''gid'', b.transaction_time DESC);
 	';
 END;
@@ -316,15 +323,22 @@ BEGIN
     RETURN QUERY EXECUTE '
 	--query1: query new_record column to get the UPDATE and INSERT objects
 	(SELECT (populate_record(null::'||tbl||', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''U''
-	OR b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''I''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' 
+		AND b.transaction_type = ''U''
+		OR b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_time >= '''||ttime_from||''' 
+		AND b.transaction_time <= '''||ttime_to||''' 
+		AND b.transaction_type = ''I''
 	ORDER BY b.new_record->''gid'', b.transaction_time DESC)
 	
 	UNION ALL
 
 	--query2: query old_record column to get the DELETE objects
 	(SELECT (populate_record(null::'||tbl||', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' AND b.transaction_type = ''D''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND b.transaction_time >= '''||ttime_from||''' AND b.transaction_time <= '''||ttime_to||''' 
+		AND b.transaction_type = ''D''
 	ORDER BY b.old_record->''gid'', b.transaction_time DESC);
 	';
 END;
@@ -376,21 +390,24 @@ BEGIN
     RETURN QUERY EXECUTE '
 	--query1: query new_record column to get the INSERT records
 	(SELECT DISTINCT ON (b.new_record->''gid'') (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''BUILT'' 
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''BUILT'' 
 	ORDER BY b.new_record->''gid'', b.transaction_time DESC)
 
 	UNION ALL
 
 	--query2: query new_record column to get the UPDATE records
 	(SELECT DISTINCT ON (b.new_record->''gid'', b.new_record->'''||col_vtime||''') (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''MODIF''
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''MODIF''
 	ORDER BY b.new_record->''gid'', b.new_record->'''||col_vtime||''', b.transaction_time DESC)
 
 	UNION ALL
 	
 	--query3: query old_record column to get the DELETE records
 	(SELECT DISTINCT ON (b.old_record->''gid'') (populate_record(null::' ||tbl|| ', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
-	WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''DESTR'' 
+		WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+		AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''DESTR'' 
 	ORDER BY b.old_record->''gid'', b.transaction_time DESC)
 	';
 END;
@@ -433,288 +450,248 @@ Arguments:
    col_vtime:		column that holds the actual valid time character varying
 $body$;
 
---TODO: ADJUST THE FOLLOWING TEMPORAL QUERIES TO NEW TABLE STRUCTURES AND MAKE THEM EASIER AND APPLICABLE TO ANY TABLE STRUCTURES!!!!
+
 -----------------------------------------------
 -- Add valid time query function (Intersect) --
 -----------------------------------------------
-CREATE OR REPLACE FUNCTION history.vtime_intersect(vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now()) 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-valid_timestamp_1 timestamptz,
-valid_timestamp_2 timestamptz
-) AS
+CREATE OR REPLACE FUNCTION history.vtime_intersect(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS SETOF RECORD AS
 $BODY$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (n0.gid) * FROM (
-	
-	-- query1: query old_record column to get UPDATE records which have a qualifier_timestamp_2 (these are real world changes)
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2
-	FROM
-	
-	(SELECT DISTINCT ON (a.old_record->'gid') (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_1' <= vtime_to AND a.old_record->'qualifier_timestamp_2' >=vtime_from
-	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1	--select only the latest version of each object primitive
+    RETURN QUERY EXECUTE '
+	SELECT DISTINCT ON (a.gid) * FROM (
+		--query1: query new_record column to get the INSERT records
+		(SELECT DISTINCT ON (b.new_record->''gid'') (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''BUILT'' 
+			AND b.new_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.new_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.new_record->''gid'', b.transaction_time DESC)
 
-	LEFT JOIN 
+		UNION ALL
 
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2
-	
-	ON (n2.gid = n1.detail_id 
-	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
+		--query2: query new_record column to get the UPDATE records
+		(SELECT DISTINCT ON (b.new_record->''gid'', b.new_record->'''||col_vtime||''') (populate_record(null::' ||tbl|| ', b.new_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''MODIF''
+			AND b.new_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.new_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.new_record->''gid'', b.new_record->'''||col_vtime||''', b.transaction_time DESC)
 
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	UNION ALL
-
-	-- query2: query new_record column to get the UPDATE and INSERT records which do not have a qualifier_timestamp_2 (these are still valid)
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2
-	FROM
-	
-	(SELECT DISTINCT ON (a.new_record->'gid') (populate_record(null::object.main_detail_qualifier, a.new_record)).*, a.transaction_time FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.new_record->'qualifier_timestamp_1' <= vtime_to	--select all records that were inserted before or at the end of the given valid time range
-	ORDER BY a.new_record->'gid', a.transaction_time DESC) n1	--select only the latest version of each object primitive
-
-	LEFT JOIN 
-	
-	(SELECT DISTINCT ON (b.new_record->'gid') (populate_record(null::object.main_detail, b.new_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.new_record->'gid', b.transaction_time DESC) n2	--select only the latest version of each object primitive
-
-	ON (n1.detail_id = n2.gid)
-	
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	EXCEPT	-- return all records that are in the result of query1 and query2 but not in the result of query3. this effectively removes the DELETE records (query3) from the UPDATE and INSERT records (query1 and query2).
-
-	--query3: query old_record column to get the DELETE records
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2
-	FROM
-	
-	(SELECT DISTINCT ON (a.old_record->'gid') (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_2' < vtime_from AND a.transaction_type = 'D'	--exclude from select results the records that where deleted before the requested time range and have a qualifier_timestamp_2 (these are real world deletes)
-	OR a.table_name = 'main_detail_qualifier' AND NOT defined(a.old_record,'qualifier_timestamp_2') AND a.transaction_type = 'D'	--exclude from select results the records that where deleted but have no qualifier_timestamp_2 (these are error deletes)
-	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1	--select only the latest version of each object primitive
-
-	LEFT JOIN
-	
-	(SELECT DISTINCT ON (b.old_record->'gid') (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2	--select only the latest version of each object primitive
-	
-	ON (n1.detail_id = n2.gid)
-
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	) n0 ORDER BY n0.gid, n0.qualifier_timestamp_1 DESC;
-
+		UNION ALL
+		
+		--query3: query old_record column to get the DELETE records
+		(SELECT DISTINCT ON (b.old_record->''gid'') (populate_record(null::' ||tbl|| ', b.old_record)).*, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''DESTR'' 
+			AND b.old_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.old_record->''gid'', b.transaction_time DESC)
+	) a ORDER BY a.gid, a.'||col_vtime||' DESC;
+	';
 END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.vtime_intersect(vtime_from text, vtime_to text) IS $body$
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_intersect(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
 This function searches history.logged_actions to get the latest version of each object primitive whose valid time intersects with the queried timerange.
+Results table structure needs to be defined manually. Returns set of records.
 
 Arguments:
-   vtime_from:	valid time from yyy-mm-dd hh:mm:ss
-   vtime_to:	valid time to yyy-mm-dd hh:mm:ss
+   tbl:			table/view that holds the valid time columns character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
+$body$;
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.vtime_intersect(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.vtime_intersect('''|| tbl_in ||''', '''|| col_value ||''', '''|| col_vtime ||''', '''|| vtime_from ||''', '''|| vtime_to ||''') 
+			main ('|| tbl_struct ||', transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_intersect(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive whose valid time intersects with the queried timerange.
+Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
 $body$;
 
 
 --------------------------------------------
 -- Add valid time query function (Inside) --
 --------------------------------------------
-CREATE OR REPLACE FUNCTION history.vtime_inside(vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now()) 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-valid_timestamp_1 timestamptz,
-valid_timestamp_2 timestamptz
-) AS
+CREATE OR REPLACE FUNCTION history.vtime_inside(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS SETOF RECORD AS
 $BODY$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (n0.gid) * FROM (
+    RETURN QUERY EXECUTE '
+	SELECT DISTINCT ON (a.gid) * FROM (
+		--query1: query old_record (from) and new_record (to) column to get the INSERT records
+		(SELECT DISTINCT ON (b.old_record->''gid'') (populate_record(null::' ||tbl|| ', b.old_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''BUILT''
+			AND exist(b.changed_fields,'''||col_vtime||''') 
+			AND b.new_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.old_record->''gid'', b.transaction_time DESC)
 
-	-- query old_record column to get all records which have a qualifier_timestamp_1 and qualifier_timestamp_2 (these are records whose lifespan ended)
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2
-	FROM
-	
-	(SELECT DISTINCT ON (a.old_record->'gid') (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_1' >= vtime_from AND a.old_record->'qualifier_timestamp_2' <= vtime_to
-	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1	--select only the latest version of each object primitive
+		UNION ALL
 
-	LEFT JOIN 
+		--query2: query old_record (from) and new_record (to) column to get the UPDATE records
+		(SELECT DISTINCT ON (b.old_record->''gid'', b.old_record->'''||col_vtime||''') (populate_record(null::' ||tbl|| ', b.old_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''MODIF''
+			AND exist(b.changed_fields,'''||col_vtime||''')
+			AND b.new_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.old_record->''gid'', b.old_record->'''||col_vtime||''', b.transaction_time DESC)
 
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2
-
-	ON (n2.gid = n1.detail_id 
-	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
-
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	) n0 ORDER BY n0.gid ASC;
+		UNION ALL
+		
+		--query3: query old_record (from) and new_record (to) column to get the DELETE records
+		(SELECT DISTINCT ON (b.new_record->''gid'') (populate_record(null::' ||tbl|| ', b.new_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''DESTR'' 
+			AND exist(b.changed_fields,'''||col_vtime||''') 
+			AND b.new_record->'''||col_vtime||''' <= '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' >= '''||vtime_from||'''
+		ORDER BY b.new_record->''gid'', b.transaction_time DESC)
+	) a ORDER BY a.gid, a.'||col_vtime||' DESC;
+	';
 END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.vtime_inside(vtime_from text, vtime_to text) IS $body$
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_inside(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
 This function searches history.logged_actions to get the latest version of each object primitive whose valid time is completely inside the queried timerange.
+Results table structure needs to be defined manually. Returns set of records.
 
 Arguments:
-   vtime_from:	valid time from yyy-mm-dd hh:mm:ss
-   vtime_to:	valid time to yyy-mm-dd hh:mm:ss
+   tbl:			table/view that holds the valid time columns character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
+$body$;
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.vtime_inside(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.vtime_inside('''|| tbl_in ||''', '''|| col_value ||''', '''|| col_vtime ||''', '''|| vtime_from ||''', '''|| vtime_to ||''') 
+			main ('|| tbl_struct ||', vtime_from timestamptz, vtime_to timestamptz, transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_inside(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive whose valid time is completely inside the queried timerange.
+Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
 $body$;
 
 
---------------------------------------------
--- Add valid time query function (equal) --
---------------------------------------------
-CREATE OR REPLACE FUNCTION history.vtime_equal(vtime_from text, vtime_to text) 
-RETURNS TABLE (
-gid int,
-object_id int,
-resolution int,
-resolution2_id int,
-resolution3_id int,
-attribute_type_code varchar,
-attribute_value varchar,
-attribute_numeric_1 numeric,
-attribute_numeric_2 numeric,
-attribute_text_1 varchar,
-the_geom geometry,
-valid_timestamp_1 timestamptz,
-valid_timestamp_2 timestamptz
-) AS
+-------------------------------------------
+-- Add valid time query function (Equal) --
+-------------------------------------------
+CREATE OR REPLACE FUNCTION history.vtime_equal(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS SETOF RECORD AS
 $BODY$
 BEGIN
-	RETURN QUERY SELECT DISTINCT ON (n0.gid) * FROM (
+    RETURN QUERY EXECUTE '
+	SELECT DISTINCT ON (a.gid) * FROM (
+		--query1: query old_record (from) and new_record (to) column to get the INSERT records
+		(SELECT DISTINCT ON (b.old_record->''gid'') (populate_record(null::' ||tbl|| ', b.old_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''BUILT''
+			AND exist(b.changed_fields,'''||col_vtime||''')  
+			AND b.new_record->'''||col_vtime||''' = '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' = '''||vtime_from||'''
+		ORDER BY b.old_record->''gid'', b.transaction_time DESC)
 
-	-- query old_record column to get UPDATE records which have a qualifier_timestamp_2 (these are real world changes)
-	SELECT  
-	n2.gid,
-	n2.object_id,
-	n3.resolution,
-	n2.resolution2_id,
-	n2.resolution3_id,
-	n2.attribute_type_code,
-	n2.attribute_value,
-	n2.attribute_numeric_1,
-	n2.attribute_numeric_2,
-	n2.attribute_text_1,
-	n2.the_geom,
-	n1.qualifier_timestamp_1,
-	n1.qualifier_timestamp_2
-	FROM
+		UNION ALL
 
-	(SELECT DISTINCT ON (a.old_record->'gid') (populate_record(null::object.main_detail_qualifier, a.old_record)).*, a.transaction_time FROM history.logged_actions AS a 
-	WHERE a.table_name = 'main_detail_qualifier' AND a.old_record->'qualifier_timestamp_1' = vtime_from AND a.old_record->'qualifier_timestamp_2' = vtime_to
-	ORDER BY a.old_record->'gid', a.transaction_time DESC) n1	--select only the latest version of each object primitive
+		--query2: query old_record (from) and new_record (to) column to get the UPDATE records
+		(SELECT DISTINCT ON (b.old_record->''gid'', b.old_record->'''||col_vtime||''') (populate_record(null::' ||tbl|| ', b.old_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.old_record)).'||col_value||'=''MODIF''
+			AND exist(b.changed_fields,'''||col_vtime||''') 
+			AND b.new_record->'''||col_vtime||''' = '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' = '''||vtime_from||'''
+		ORDER BY b.old_record->''gid'', b.old_record->'''||col_vtime||''', b.transaction_time DESC)
 
-	LEFT JOIN 
-	
-	(SELECT (populate_record(null::object.main_detail, b.old_record)).*, b.transaction_time FROM history.logged_actions AS b 
-	WHERE b.table_name = 'main_detail'
-	ORDER BY b.old_record->'gid', b.transaction_time DESC) n2
-	
-	ON (n2.gid = n1.detail_id 
-	AND n2.transaction_time = (SELECT max(transaction_time) FROM history.logged_actions WHERE table_name = 'main_detail' AND transaction_time <= n1.transaction_time))	--join only the records from main_detail that have the closest lesser transaction time to the selected main_detail_qualifier
-
-	JOIN 
-	object.main AS n3 
-	ON (n3.gid = n2.object_id)
-
-	) n0 ORDER BY n0.gid ASC;
+		UNION ALL
+		
+		--query3: query old_record (from) and new_record (to) column to get the DELETE records
+		(SELECT DISTINCT ON (b.new_record->''gid'') (populate_record(null::' ||tbl|| ', b.new_record)).*, (populate_record(null::' ||tbl|| ', b.old_record)).'||col_vtime||' as vtime_from, (populate_record(null::' ||tbl|| ', b.new_record)).'||col_vtime||' as vtime_to, b.transaction_time, b.transaction_type FROM history.logged_actions AS b 
+			WHERE b.table_name = split_part('''||tbl||''', ''.'', 2) 
+			AND (populate_record(null::' ||tbl|| ', b.new_record)).'||col_value||'=''DESTR'' 
+			AND exist(b.changed_fields,'''||col_vtime||''')
+			AND b.new_record->'''||col_vtime||''' = '''||vtime_to||''' AND b.old_record->'''||col_vtime||''' = '''||vtime_from||'''
+		ORDER BY b.new_record->''gid'', b.transaction_time DESC)
+	) a ORDER BY a.gid, a.'||col_vtime||' DESC;
+	';
 END;
-$BODY$ 
-LANGUAGE 'plpgsql';
-
-COMMENT ON FUNCTION history.vtime_equal(vtime_from text, vtime_to text) IS $body$
+$BODY$
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_equal(tbl character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
 This function searches history.logged_actions to get the latest version of each object primitive whose valid time range equals the queried timerange.
+Results table structure needs to be defined manually. Returns set of records.
 
 Arguments:
-   vtime_from:	valid time from yyy-mm-dd hh:mm:ss
-   vtime_to:	valid time to yyy-mm-dd hh:mm:ss
+   tbl:			table/view that holds the valid time columns character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
 $body$;
-*/
+
+--Convenience call wrapper that gets dynamic column structure of results and writes them to view
+CREATE OR REPLACE FUNCTION history.vtime_equal(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text DEFAULT '0001-01-01 00:00:00', vtime_to text DEFAULT now())
+RETURNS void AS 
+$BODY$
+DECLARE 
+  tbl_struct text;
+BEGIN
+tbl_struct := string_agg(column_name || ' ' || udt_name, ',') FROM information_schema.columns WHERE table_name = split_part(tbl_in, '.', 2);
+EXECUTE '
+	CREATE OR REPLACE VIEW '|| tbl_out ||' AS
+		SELECT ROW_NUMBER() OVER (ORDER BY transaction_timestamp ASC) AS rowid, * 
+		FROM history.vtime_equal('''|| tbl_in ||''', '''|| col_value ||''', '''|| col_vtime ||''', '''|| vtime_from ||''', '''|| vtime_to ||''') 
+			main ('|| tbl_struct ||', vtime_from timestamptz, vtime_to timestamptz, transaction_timestamp timestamptz, transaction_type text);
+	';
+END;
+$BODY$  
+LANGUAGE plpgsql;
+COMMENT ON FUNCTION history.vtime_equal(tbl_in character varying, tbl_out character varying, col_value character varying, col_vtime character varying, vtime_from text, vtime_to text) IS $body$
+This function searches history.logged_actions to get the latest version of each object primitive whose valid time range equals the queried timerange.
+Results table structure is defined dynamically from input table/view. Returns view.
+Arguments:
+   tbl_in:		schema.table character varying
+   tbl_out:		schema.table character varying
+   col_value:		column that holds the qualifier values (BUILT, MODIF, DESTR) character varying
+   col_vtime:		column that holds the actual valid time character varying
+   vtime_from:		valid time from text
+   vtime_to:		valid time to text
+$body$;
