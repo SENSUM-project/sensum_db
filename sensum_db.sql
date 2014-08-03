@@ -2,7 +2,7 @@
 -----------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution, multi-temporal database model 
 -- Version: 0.9.1
--- Date: 21.07.14
+-- Date: 03.08.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the basic data model with hstore and postgis support.  
@@ -237,7 +237,6 @@ CREATE TABLE object_res1.main_detail_qualifier (
 	qualifier_numeric_1  numeric,
 	qualifier_text_1     varchar( 254 ),
 	qualifier_timestamp_1 timestamptz,
-	qualifier_timestamp_2 timestamptz,
 	CONSTRAINT pk_main_detail_qualifier PRIMARY KEY ( gid )
  );
 
@@ -262,8 +261,6 @@ COMMENT ON COLUMN object_res1.main_detail_qualifier.qualifier_numeric_1 IS 'Valu
 COMMENT ON COLUMN object_res1.main_detail_qualifier.qualifier_text_1 IS 'Value of the taxonomy qualifier type (textual)';
 
 COMMENT ON COLUMN object_res1.main_detail_qualifier.qualifier_timestamp_1 IS 'Value of the taxonomy qualifier type (timestamp)';
-
-COMMENT ON COLUMN object_res1.main_detail_qualifier.qualifier_timestamp_2 IS 'Value of the taxonomy qualifier type (timestamp)';
 
 CREATE TABLE object_res2.main ( 
 	gid                  serial NOT NULL,
@@ -330,7 +327,6 @@ CREATE TABLE object_res2.main_detail_qualifier (
 	qualifier_numeric_1  numeric,
 	qualifier_text_1     varchar( 254 ),
 	qualifier_timestamp_1 timestamptz,
-	qualifier_timestamp_2 timestamptz,
 	CONSTRAINT pk_main_detail_qualifier PRIMARY KEY ( gid )
  );
 
@@ -355,8 +351,6 @@ COMMENT ON COLUMN object_res2.main_detail_qualifier.qualifier_numeric_1 IS 'Valu
 COMMENT ON COLUMN object_res2.main_detail_qualifier.qualifier_text_1 IS 'Value of the taxonomy qualifier type (textual)';
 
 COMMENT ON COLUMN object_res2.main_detail_qualifier.qualifier_timestamp_1 IS 'Value of the taxonomy qualifier type (timestamp)';
-
-COMMENT ON COLUMN object_res2.main_detail_qualifier.qualifier_timestamp_2 IS 'Value of the taxonomy qualifier type (timestamp)';
 
 CREATE TABLE object_res3.main ( 
 	gid                  serial NOT NULL,
@@ -420,7 +414,6 @@ CREATE TABLE object_res3.main_detail_qualifier (
 	qualifier_numeric_1  numeric,
 	qualifier_text_1     varchar( 254 ),
 	qualifier_timestamp_1 timestamptz,
-	qualifier_timestamp_2 timestamptz,
 	CONSTRAINT pk_main_detail_qualifier PRIMARY KEY ( gid )
  );
 
@@ -445,8 +438,6 @@ COMMENT ON COLUMN object_res3.main_detail_qualifier.qualifier_numeric_1 IS 'Valu
 COMMENT ON COLUMN object_res3.main_detail_qualifier.qualifier_text_1 IS 'Value of the taxonomy qualifier type (textual)';
 
 COMMENT ON COLUMN object_res3.main_detail_qualifier.qualifier_timestamp_1 IS 'Value of the taxonomy qualifier type (timestamp)';
-
-COMMENT ON COLUMN object_res3.main_detail_qualifier.qualifier_timestamp_2 IS 'Value of the taxonomy qualifier type (timestamp)';
 
 CREATE TABLE history.logged_actions ( 
 	gid                  bigserial NOT NULL,

@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-temporal database support
 -- Version: 0.91
--- Date: 27.07.14
+-- Date: 03.08.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-temporal support to the basic SENSUM data model.

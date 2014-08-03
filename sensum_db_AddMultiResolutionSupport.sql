@@ -2,7 +2,7 @@
 ------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution database support
 -- Version: 0.9.1
--- Date: 25.07.14
+-- Date: 03.08.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-resolution support to the basic SENSUM data model.
@@ -34,8 +34,7 @@ c.qualifier_type_code,
 c.qualifier_value,
 c.qualifier_numeric_1,
 c.qualifier_text_1,
-c.qualifier_timestamp_1,
-c.qualifier_timestamp_2
+c.qualifier_timestamp_1
 FROM object_res1.main AS a
 JOIN object_res1.main_detail AS b ON (a.gid = b.object_id)
 JOIN object_res1.main_detail_qualifier AS c ON (b.gid = c.detail_id)
@@ -63,8 +62,7 @@ c.qualifier_type_code,
 c.qualifier_value,
 c.qualifier_numeric_1,
 c.qualifier_text_1,
-c.qualifier_timestamp_1,
-c.qualifier_timestamp_2
+c.qualifier_timestamp_1
 FROM object_res2.main AS a
 JOIN object_res2.main_detail AS b ON (a.gid = b.object_id)
 JOIN object_res2.main_detail_qualifier AS c ON (b.gid = c.detail_id)
@@ -90,8 +88,7 @@ c.qualifier_type_code,
 c.qualifier_value,
 c.qualifier_numeric_1,
 c.qualifier_text_1,
-c.qualifier_timestamp_1,
-c.qualifier_timestamp_2
+c.qualifier_timestamp_1
 FROM object_res3.main AS a
 JOIN object_res3.main_detail AS b ON (a.gid = b.object_id)
 JOIN object_res3.main_detail_qualifier AS c ON (b.gid = c.detail_id)
@@ -108,12 +105,12 @@ BEGIN
       IF TG_OP = 'INSERT' THEN
        INSERT INTO object_res1.main (gid, survey_gid, description, source, res2_id, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.res2_id, NEW.res3_id, NEW.the_geom);
        INSERT INTO object_res1.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res1.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
-       INSERT INTO object_res1.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1, qualifier_timestamp_2) VALUES ((SELECT max(gid) FROM object_res1.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1, NEW.qualifier_timestamp_2);
+       INSERT INTO object_res1.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res1.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
        UPDATE object_res1.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, res2_id=NEW.res2_id, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res1.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
-       UPDATE object_res1.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1, qualifier_timestamp_2=NEW.qualifier_timestamp_2 WHERE detail_id=OLD.gid;
+       UPDATE object_res1.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;
       ELSIF TG_OP = 'DELETE' THEN
        DELETE FROM object_res1.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res1.main_detail WHERE object_id=OLD.gid);
@@ -161,12 +158,12 @@ BEGIN
       IF TG_OP = 'INSERT' THEN
        INSERT INTO object_res2.main (gid, survey_gid, description, source, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.res3_id, NEW.the_geom);
        INSERT INTO object_res2.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res2.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
-       INSERT INTO object_res2.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1, qualifier_timestamp_2) VALUES ((SELECT max(gid) FROM object_res2.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1, NEW.qualifier_timestamp_2);
+       INSERT INTO object_res2.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res2.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
        UPDATE object_res2.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res2.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
-       UPDATE object_res2.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1, qualifier_timestamp_2=NEW.qualifier_timestamp_2 WHERE detail_id=OLD.gid;
+       UPDATE object_res2.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;
       ELSIF TG_OP = 'DELETE' THEN
        DELETE FROM object_res2.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res2.main_detail WHERE object_id=OLD.gid);
@@ -213,12 +210,12 @@ BEGIN
       IF TG_OP = 'INSERT' THEN
        INSERT INTO object_res3.main (gid, survey_gid, description, source, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.the_geom);
        INSERT INTO object_res3.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res3.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
-       INSERT INTO object_res3.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1, qualifier_timestamp_2) VALUES ((SELECT max(gid) FROM object_res3.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1, NEW.qualifier_timestamp_2);
+       INSERT INTO object_res3.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res3.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
        UPDATE object_res3.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res3.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
-       UPDATE object_res3.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1, qualifier_timestamp_2=NEW.qualifier_timestamp_2 WHERE detail_id=OLD.gid;
+       UPDATE object_res3.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;
       ELSIF TG_OP = 'DELETE' THEN
        DELETE FROM object_res3.main_detail_qualifier WHERE detail_id IN (SELECT gid FROM object_res3.main_detail WHERE object_id=OLD.gid);
