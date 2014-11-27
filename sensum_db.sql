@@ -188,11 +188,11 @@ COMMENT ON COLUMN object_res1.main.survey_gid IS 'Identifier for the survey';
 
 COMMENT ON COLUMN object_res1.main.description IS 'Textual description of the object';
 
-COMMENT ON COLUMN object_res1.main.source IS 'Source of the object content (e.g. remote sensing, in-situ)';
+COMMENT ON COLUMN object_res1.main.source IS 'Source of the object (geometry)';
 
-COMMENT ON COLUMN object_res1.main.res2_id IS 'gid of the object detail at resolution level 2 (e.g. neighbourhood scale)';
+COMMENT ON COLUMN object_res1.main.res2_id IS 'gid of the object at resolution level 2 (e.g. neighbourhood scale)';
 
-COMMENT ON COLUMN object_res1.main.res3_id IS 'gid of the object detail at resolution level 3 (e.g. settlement scale)';
+COMMENT ON COLUMN object_res1.main.res3_id IS 'gid of the object at resolution level 3 (e.g. settlement scale)';
 
 COMMENT ON COLUMN object_res1.main.the_geom IS 'Spatial reference and geometry information';
 
