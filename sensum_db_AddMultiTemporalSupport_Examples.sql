@@ -217,21 +217,14 @@ CREATE OR REPLACE VIEW object.vtime_intersect AS
 SELECT * FROM history.vtime_intersect() WHERE resolution=1 AND valid_timestamp_1='1980-05-15';
 
 -- Truncate timestamp to desired unit
-SELECT date_trunc('minute', transaction_time) FROM object.ttime_inside_all; 
+SELECT date_trunc('minute', transaction_timestamp) FROM history.ttime_history; 
 
 -- Convert timestamptz to timestamp
-SELECT transaction_time AT TIME ZONE 'UTC-2' FROM object.ttime_inside_all;
+SELECT transaction_timestamp AT TIME ZONE 'UTC' FROM history.ttime_history;
 
 -- Create input for time series visualisation with for example QGIS time manager plugin
-CREATE OR REPLACE VIEW object.ttime_inside_all AS
-SELECT ROW_NUMBER() OVER (ORDER BY gid ASC) AS maingid, * FROM history.ttime_inside_all();
-
-CREATE OR REPLACE VIEW object.ttime_timeseries AS
-SELECT * FROM 
-(SELECT maingid, the_geom FROM object.ttime_inside_all WHERE resolution=1) a
-LEFT JOIN
-(SELECT maingid AS id1, transaction_time AT TIME ZONE 'UTC-2' AS ttime_start FROM object.ttime_inside_all WHERE transaction_type='U' OR transaction_type='I') b
-ON (a.maingid = b.id1)
-left JOIN
-(SELECT maingid AS id2, transaction_time AT TIME ZONE 'UTC-2' AS ttime_stop FROM  object.ttime_inside_all WHERE transaction_type='D') c
-ON (a.maingid = c.id2);
+-- note: plugin runs much faster with a table than with a view!
+CREATE OR REPLACE VIEW public.ttime_history AS
+SELECT *, transaction_timestamp AT TIME ZONE 'UTC' AS transaction_timestamp_utc FROM history.ttime_history;
+-- as table
+SELECT *, transaction_timestamp AT TIME ZONE 'UTC' AS transaction_timestamp_utc INTO public.ttime_history_t FROM history.ttime_history;
