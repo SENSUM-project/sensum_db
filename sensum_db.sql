@@ -1,8 +1,8 @@
 ﻿-----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution, multi-temporal database model 
--- Version: 0.9.1
--- Date: 03.08.14
+-- Version: 0.9.2
+-- Date: 02.12.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the basic data model with hstore and postgis support.  
@@ -174,6 +174,7 @@ CREATE TABLE object_res1.main (
 	survey_gid           integer,
 	description          varchar( 254 ),
 	source               text,
+	accuracy	     numeric,
 	res2_id		     integer,
 	res3_id       	     integer,
 	the_geom             geometry,
@@ -189,6 +190,8 @@ COMMENT ON COLUMN object_res1.main.survey_gid IS 'Identifier for the survey';
 COMMENT ON COLUMN object_res1.main.description IS 'Textual description of the object';
 
 COMMENT ON COLUMN object_res1.main.source IS 'Source of the object (geometry)';
+
+COMMENT ON COLUMN object_res1.main.accuracy IS 'Accuracy of the object (geometry)';
 
 COMMENT ON COLUMN object_res1.main.res2_id IS 'gid of the object at resolution level 2 (e.g. neighbourhood scale)';
 
@@ -267,6 +270,7 @@ CREATE TABLE object_res2.main (
 	survey_gid           integer,
 	description          varchar( 254 ),
 	source               text,
+	accuracy	     numeric,
 	res3_id       	     integer,
 	the_geom             geometry,
 	CONSTRAINT pk_main_0 PRIMARY KEY ( gid )
@@ -281,6 +285,8 @@ COMMENT ON COLUMN object_res2.main.survey_gid IS 'Identifier for the survey';
 COMMENT ON COLUMN object_res2.main.description IS 'Textual description of the object';
 
 COMMENT ON COLUMN object_res2.main.source IS 'Source of the object content (e.g. remote sensing, in-situ)';
+
+COMMENT ON COLUMN object_res2.main.accuracy IS 'Accuracy of the object content';
 
 COMMENT ON COLUMN object_res2.main.res3_id IS 'gid of the object at resolution level 3 (e.g. settlement scale)';
 
@@ -357,6 +363,7 @@ CREATE TABLE object_res3.main (
 	survey_gid           integer,
 	description          varchar( 254 ),
 	source               text,
+	accuracy	     numeric,
 	the_geom             geometry,
 	CONSTRAINT pk_main_0 PRIMARY KEY ( gid )
  );
@@ -370,6 +377,8 @@ COMMENT ON COLUMN object_res3.main.survey_gid IS 'Identifier for the survey';
 COMMENT ON COLUMN object_res3.main.description IS 'Textual description of the object';
 
 COMMENT ON COLUMN object_res3.main.source IS 'Source of the object content (e.g. remote sensing, in-situ)';
+
+COMMENT ON COLUMN object_res3.main.accuracy IS 'Accuracy of the object content';
 
 COMMENT ON COLUMN object_res3.main.the_geom IS 'Spatial reference and geometry information';
 

@@ -1,8 +1,8 @@
 ﻿------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 -- Name: SENSUM multi-resolution database support
--- Version: 0.9.1
--- Date: 03.08.14
+-- Version: 0.9.2
+-- Date: 02.12.14
 -- Author: M. Wieland
 -- DBMS: PostgreSQL9.2 / PostGIS2.0
 -- Description: Adds the multi-resolution support to the basic SENSUM data model.
@@ -20,6 +20,7 @@ a.gid,
 a.survey_gid,
 a.description,
 a.source,
+a.accuracy,
 a.res2_id,
 a.res3_id,
 a.the_geom,
@@ -49,6 +50,7 @@ a.gid,
 a.survey_gid,
 a.description,
 a.source,
+a.accuracy,
 a.res3_id,
 a.the_geom,
 b.object_id,
@@ -77,6 +79,7 @@ a.gid,
 a.survey_gid,
 a.description,
 a.source,
+a.accuracy,
 a.the_geom,
 b.attribute_type_code,
 b.attribute_value,
@@ -103,12 +106,12 @@ RETURNS TRIGGER AS
 $BODY$
 BEGIN
       IF TG_OP = 'INSERT' THEN
-       INSERT INTO object_res1.main (gid, survey_gid, description, source, res2_id, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.res2_id, NEW.res3_id, NEW.the_geom);
+       INSERT INTO object_res1.main (gid, survey_gid, description, source, accuracy, res2_id, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.accuracy, NEW.res2_id, NEW.res3_id, NEW.the_geom);
        INSERT INTO object_res1.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res1.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
        INSERT INTO object_res1.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res1.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
-       UPDATE object_res1.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, res2_id=NEW.res2_id, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
+       UPDATE object_res1.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, accuracy=NEW.accuracy, res2_id=NEW.res2_id, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res1.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
        UPDATE object_res1.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;
@@ -156,12 +159,12 @@ RETURNS TRIGGER AS
 $BODY$
 BEGIN
       IF TG_OP = 'INSERT' THEN
-       INSERT INTO object_res2.main (gid, survey_gid, description, source, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.res3_id, NEW.the_geom);
+       INSERT INTO object_res2.main (gid, survey_gid, description, source, accuracy, res3_id, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.accuracy, NEW.res3_id, NEW.the_geom);
        INSERT INTO object_res2.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res2.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
        INSERT INTO object_res2.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res2.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
-       UPDATE object_res2.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
+       UPDATE object_res2.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, accuracy=NEW.accuracy, res3_id=NEW.res3_id, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res2.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
        UPDATE object_res2.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;
@@ -208,12 +211,12 @@ RETURNS TRIGGER AS
 $BODY$
 BEGIN
       IF TG_OP = 'INSERT' THEN
-       INSERT INTO object_res3.main (gid, survey_gid, description, source, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.the_geom);
+       INSERT INTO object_res3.main (gid, survey_gid, description, source, accuracy, the_geom) VALUES (DEFAULT, NEW.survey_gid, NEW.description, NEW. source, NEW.accuracy, NEW.the_geom);
        INSERT INTO object_res3.main_detail (object_id, attribute_type_code, attribute_value, attribute_numeric_1, attribute_numeric_2, attribute_text_1) VALUES ((SELECT max(gid) FROM object_res3.main), NEW.attribute_type_code, NEW.attribute_value, NEW.attribute_numeric_1, NEW.attribute_numeric_2, NEW.attribute_text_1);
        INSERT INTO object_res3.main_detail_qualifier (detail_id, qualifier_type_code, qualifier_value, qualifier_numeric_1, qualifier_text_1, qualifier_timestamp_1) VALUES ((SELECT max(gid) FROM object_res3.main_detail), NEW.qualifier_type_code, NEW.qualifier_value, NEW.qualifier_numeric_1, NEW.qualifier_text_1, NEW.qualifier_timestamp_1);
        RETURN NEW;
       ELSIF TG_OP = 'UPDATE' THEN
-       UPDATE object_res3.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, the_geom=NEW.the_geom WHERE gid=OLD.gid;
+       UPDATE object_res3.main SET gid=NEW.gid, survey_gid=NEW.survey_gid, description=NEW.description, source=NEW.source, accuracy=NEW.accuracy, the_geom=NEW.the_geom WHERE gid=OLD.gid;
        UPDATE object_res3.main_detail SET attribute_type_code=NEW.attribute_type_code, attribute_value=NEW.attribute_value, attribute_numeric_1=NEW.attribute_numeric_1, attribute_numeric_2=NEW.attribute_numeric_2, attribute_text_1=NEW.attribute_text_1 WHERE object_id=OLD.gid;
        UPDATE object_res3.main_detail_qualifier SET qualifier_type_code=NEW.qualifier_type_code, qualifier_value=NEW.qualifier_value, qualifier_numeric_1=NEW.qualifier_numeric_1, qualifier_text_1=NEW.qualifier_text_1, qualifier_timestamp_1=NEW.qualifier_timestamp_1 WHERE detail_id=OLD.gid;
        RETURN NEW;

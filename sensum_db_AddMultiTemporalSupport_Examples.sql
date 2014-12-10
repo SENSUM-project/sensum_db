@@ -35,17 +35,17 @@ DROP TRIGGER IF EXISTS zhistory_trigger_row_modified ON history.logged_actions;
 -- Example statements to properly INSERT, UPDATE or DELETE objects for different cases--
 ----------------------------------------------------------------------------------------
 --INSERT an object cause of a real world construction: 1. mark the object change type as 'BUILT'; 2. set the date of construction; 3. insert it
-insert into object_res1.ve_resolution1 (description, yr_built_vt, yr_built_vt1) values ('building', 'BUILT', '01-01-2000');
+insert into object_res1.ve_resolution1 (description, yr_built_vt, yr_built_vt1) values ('insert', 'BUILT', '01-01-2000');
 
 --UPDATE an object cause of a real world modification: 1. mark the object change type as 'MODIF'; 2. set the date of modification; 3. update it
-update object_res1.ve_resolution1 set description='building', yr_built_vt='MODIF', yr_built_vt1='01-01-2002' where gid=1;
+update object_res1.ve_resolution1 set description='modified', yr_built_vt='MODIF', yr_built_vt1='01-01-2002' where gid=1;
 
 --DELETE an object cause of a real world destruction: 1. mark the object change type as 'DESTR'; 2. set the date of destruction; 3. delete it
-update object_res1.ve_resolution1 set description='building', yr_built_vt='DESTR', yr_built_vt1='01-01-2014' where gid=1;
+update object_res1.ve_resolution1 set description='deleted', yr_built_vt='DESTR', yr_built_vt1='01-01-2014' where gid=1;
 delete from object_res1.ve_resolution1 where gid=1;
 
 --UPDATE an object cause of a correction or cause more information gets available (no real world change): update it without marking the object change type
-update object_res1.ve_resolution1 set description='building_corrected' where gid=1;
+update object_res1.ve_resolution1 set description='modified_corrected' where gid=1;
 
 
 ---------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ SELECT * FROM history.ttime_inside('object_res1.ve_resolution1', '2014-07-19 16:
 ------------------------------------------------------------------
 -- Example for "get history valid time query" vtime_gethistory()--
 ------------------------------------------------------------------
--- This gives the valid time history of all object primitives (only the real world changes - it gives the latest version of the object primitives at each real world change time)
+-- This gives the valid time history of a specified object primitive (only the real world changes - it gives the latest version of the object primitives at each real world change time)
 SELECT * FROM history.vtime_gethistory('object_res1.ve_resolution1', 'history.vtime_history', 'yr_built_vt', 'yr_built_vt1');
 
 -- Same as above, but output as records. 
